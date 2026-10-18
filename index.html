@@ -1,0 +1,3008 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#cf0a2c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>工作日志</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23cf0a2c'/><text x='50' y='68' font-size='58' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>日</text></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23cf0a2c'/><text x='50' y='68' font-size='58' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>日</text></svg>">
+  <style>
+:root {
+  --primary: #cf0a2c;
+  --primary-light: #e8344e;
+  --primary-dark: #a00823;
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --text: #1a1a1a;
+  --text-secondary: #8a8a8e;
+  --text-tertiary: #b8b8bd;
+  --border: #ebebed;
+  --success: #34c759;
+  --warning: #ff9500;
+  --danger: #ff3b30;
+  --shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  --radius: 14px;
+  --radius-sm: 10px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "HarmonyOS Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Header */
+#top-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(var(--safe-top) + 12px) 16px 12px;
+  background: var(--primary);
+  color: #fff;
+  min-height: calc(var(--safe-top) + 56px);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+
+#top-header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: inherit;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  transition: background 0.2s;
+}
+
+.icon-btn:active {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Main content */
+#main-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+}
+
+.view {
+  display: none;
+  padding: 16px;
+  padding-bottom: calc(100px + var(--safe-bottom));
+  min-height: 100%;
+}
+
+.view.active {
+  display: block;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Date picker bar */
+.date-picker-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.day-nav {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: var(--card);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.1s;
+}
+
+.day-nav:active {
+  transform: scale(0.92);
+}
+
+.date-input {
+  flex: 1;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  font-size: 16px;
+  background: var(--card);
+  color: var(--text);
+  text-align: center;
+}
+
+.today-btn {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 20px;
+  border: 1px solid var(--primary);
+  background: transparent;
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Summary card */
+.summary-card {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 16px rgba(207, 10, 44, 0.25);
+}
+
+.summary-total {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.summary-num {
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.summary-unit {
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.summary-detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  opacity: 0.95;
+}
+
+.summary-label {
+  opacity: 0.8;
+}
+
+/* Log list */
+.section-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.log-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  border-left: 4px solid var(--primary);
+  position: relative;
+  transition: transform 0.15s;
+}
+
+.log-card:active {
+  transform: scale(0.98);
+}
+
+.log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.log-task {
+  font-size: 16px;
+  font-weight: 600;
+  flex: 1;
+  word-break: break-word;
+}
+
+.log-duration {
+  background: var(--bg);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.log-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.log-section-tag {
+  font-size: 12px;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: var(--text-secondary);
+}
+
+.log-date-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.log-notes {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.log-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.log-btn {
+  flex: 1;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.log-btn.danger {
+  color: var(--danger);
+  border-color: #ffd1ce;
+  background: #fff5f4;
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 56px;
+  margin-bottom: 12px;
+  opacity: 0.6;
+}
+
+.empty-state p {
+  font-size: 14px;
+}
+
+/* Form */
+.form-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="date"],
+.form-group input[type="number"],
+.form-group textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 16px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: var(--card);
+}
+
+.form-group textarea {
+  resize: none;
+  line-height: 1.5;
+}
+
+/* Section selector */
+.section-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.section-chip {
+  padding: 8px 14px;
+  border-radius: 18px;
+  border: 2px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.section-chip.active {
+  border-color: transparent;
+  color: #fff;
+}
+
+/* Duration picker */
+.duration-picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.dur-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--card);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.1s;
+}
+
+.dur-btn:active {
+  transform: scale(0.9);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+#log-duration {
+  flex: 1;
+  text-align: center;
+  font-size: 24px !important;
+  font-weight: 700;
+}
+
+#log-duration::-webkit-outer-spin-button,
+#log-duration::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+#log-duration {
+  -moz-appearance: textfield;
+}
+
+.duration-hint {
+  text-align: center;
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.dur-presets {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.dur-presets button {
+  flex: 1;
+  min-width: 56px;
+  height: 34px;
+  border-radius: 17px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.dur-presets button:active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* Form actions */
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.btn {
+  flex: 1;
+  height: 46px;
+  border-radius: var(--radius-sm);
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn-primary:active {
+  background: var(--primary-dark);
+}
+
+.btn-secondary {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  height: 44px;
+  margin-bottom: 10px;
+}
+
+.btn-danger {
+  background: #fff5f4;
+  color: var(--danger);
+  border: 1px solid #ffd1ce;
+  height: 44px;
+}
+
+.btn.full {
+  width: 100%;
+}
+
+/* Stats */
+.stats-tabs {
+  display: flex;
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+
+.tab {
+  flex: 1;
+  height: 38px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.stats-overview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.stat-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.chart-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+
+.chart-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.chart-container {
+  position: relative;
+  height: 240px;
+}
+
+/* Section breakdown */
+.breakdown-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.breakdown-item:last-child {
+  border-bottom: none;
+}
+
+.breakdown-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.breakdown-name {
+  flex: 1;
+  font-size: 14px;
+}
+
+.breakdown-hours {
+  font-weight: 600;
+  font-size: 14px;
+  margin-right: 8px;
+}
+
+.breakdown-pct {
+  font-size: 12px;
+  color: var(--text-secondary);
+  width: 50px;
+  text-align: right;
+}
+
+/* History */
+.search-bar {
+  margin-bottom: 16px;
+}
+
+.search-bar input {
+  width: 100%;
+  height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 21px;
+  padding: 0 16px 0 40px;
+  font-size: 15px;
+  background: var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='%238a8a8e'%3E%3Cpath d='M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z'/%3E%3C/svg%3E") no-repeat 14px center;
+}
+
+.search-bar input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.history-group {
+  margin-bottom: 16px;
+}
+
+.history-group-title {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 0 4px 8px;
+  font-weight: 500;
+}
+
+/* Settings */
+.settings-group {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+
+.group-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.group-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+}
+
+.settings-section-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.settings-section-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 18px;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.settings-section-item:active {
+  transform: scale(0.95);
+}
+
+.settings-section-item .del-x {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.about-info p {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.about-sub {
+  color: var(--text-secondary) !important;
+  font-size: 12px !important;
+  margin-top: 4px;
+}
+
+/* FAB */
+.fab {
+  position: fixed;
+  right: 20px;
+  bottom: calc(80px + var(--safe-bottom));
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  box-shadow: 0 6px 20px rgba(207, 10, 44, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 100;
+  transition: transform 0.15s;
+}
+
+.fab:active {
+  transform: scale(0.9);
+}
+
+.fab.hidden {
+  display: none;
+}
+
+/* Bottom nav */
+#bottom-nav {
+  display: flex;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  padding: 6px 0 calc(var(--safe-bottom) + 6px);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.nav-item.active {
+  color: var(--primary);
+}
+
+.nav-item svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(100px + var(--safe-bottom));
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  opacity: 0;
+  transition: all 0.3s;
+  z-index: 1000;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Modal */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  animation: fadeIn 0.2s;
+}
+
+.modal-content {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  background: var(--card);
+  border-radius: 20px 20px 0 0;
+  padding: 20px;
+  padding-bottom: calc(20px + var(--safe-bottom));
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.modal-content h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.color-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.color-dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 3px solid transparent;
+  transition: transform 0.1s;
+}
+
+.color-dot.selected {
+  border-color: var(--text);
+  transform: scale(1.1);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ===== v2 new styles ===== */
+
+/* Row between */
+.row-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.row-between label {
+  margin-bottom: 0;
+}
+
+/* Segment control */
+.segment {
+  display: flex;
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.seg-btn {
+  border: none;
+  background: transparent;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.seg-btn.active {
+  background: var(--card);
+  color: var(--primary);
+  font-weight: 600;
+  box-shadow: var(--shadow);
+}
+
+/* Bucket selector */
+.bucket-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bucket-btn {
+  flex: 1;
+  min-width: 70px;
+  padding: 10px 8px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.bucket-btn.active {
+  border-color: var(--primary);
+  background: rgba(207, 10, 44, 0.08);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* Business selector */
+.business-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.business-chip {
+  padding: 7px 13px;
+  border-radius: 16px;
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.business-chip.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* Todo edit list */
+.todo-edit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.todo-edit-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.todo-edit-item input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+}
+
+.todo-edit-item input[type="text"] {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  background: var(--bg);
+}
+
+.todo-edit-item .todo-del {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.add-todo-btn {
+  background: transparent;
+  border: none;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+/* Pending plans */
+.pending-plans {
+  background: var(--card);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.pending-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+
+.pending-title {
+  font-size: 15px;
+  font-weight: 600;
+  flex: 1;
+}
+
+.pending-count {
+  background: var(--warning);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.pending-arrow {
+  color: var(--text-secondary);
+  transition: transform 0.2s;
+}
+
+.pending-body {
+  padding: 0 16px 16px;
+  display: none;
+}
+
+.pending-body.show {
+  display: block;
+}
+
+.pending-arrow.open {
+  transform: rotate(180deg);
+}
+
+/* Plan badge */
+.plan-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: var(--warning);
+  color: #fff;
+  font-weight: 600;
+  margin-right: 6px;
+}
+
+.log-card.is-plan {
+  border-left-color: var(--warning) !important;
+  opacity: 0.92;
+}
+
+.log-card.is-plan .log-duration {
+  background: #fff4e6;
+  color: var(--warning);
+}
+
+/* Calendar */
+.cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.cal-title {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  padding: 0 2px;
+}
+
+.cal-weekdays span {
+  padding: 6px 0;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 8px;
+  box-shadow: var(--shadow);
+}
+
+.cal-cell {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.15s;
+}
+
+.cal-cell:hover,
+.cal-cell:active {
+  background: var(--bg);
+}
+
+.cal-cell.other-month {
+  opacity: 0.3;
+}
+
+.cal-cell.today {
+  background: rgba(207, 10, 44, 0.1);
+}
+
+.cal-cell.today .cal-day-num {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.cal-cell.selected {
+  background: var(--primary);
+}
+
+.cal-cell.selected .cal-day-num {
+  color: #fff;
+}
+
+.cal-day-num {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.cal-dots {
+  display: flex;
+  gap: 2px;
+  margin-top: auto;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 100%;
+}
+
+.cal-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.cal-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.cal-day-detail {
+  margin-top: 16px;
+}
+
+.cal-detail-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--text-secondary);
+}
+
+/* Memo view */
+.memo-summary {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  gap: 16px;
+}
+
+.memo-summary-item {
+  flex: 1;
+  text-align: center;
+}
+
+.memo-summary-num {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.memo-summary-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.memo-log-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+  border-left: 4px solid var(--primary);
+}
+
+.memo-log-date {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.memo-log-task {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.memo-log-notes {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  margin-bottom: 8px;
+}
+
+/* Todo display list */
+.todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.todo-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.todo-item span {
+  font-size: 14px;
+  flex: 1;
+}
+
+.todo-item.done span {
+  text-decoration: line-through;
+  color: var(--text-tertiary);
+}
+
+/* Danger zone (less prominent) */
+.danger-zone {
+  opacity: 0.65;
+  border: 1px dashed var(--border);
+}
+
+.danger-zone .group-title {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.btn-danger-ghost {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--border);
+  height: 40px;
+  font-size: 14px;
+}
+
+.btn-danger-ghost:active {
+  background: #fff5f4;
+}
+
+/* Business edit list in modal */
+.business-edit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.business-edit-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.business-edit-item input {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  background: var(--bg);
+}
+
+.business-edit-item button {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg);
+  color: var(--text-tertiary);
+  font-size: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Business breakdown in stats */
+.business-breakdown {
+  padding-left: 24px;
+  margin-top: 6px;
+  margin-bottom: 10px;
+}
+
+.business-breakdown .breakdown-item {
+  padding: 6px 0;
+}
+
+.business-breakdown .breakdown-name {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Plan bucket display */
+.plan-bucket-tag {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #fff4e6;
+  color: var(--warning);
+  margin-left: 6px;
+}
+
+/* Scrollbar */
+#main-content::-webkit-scrollbar {
+  width: 0;
+}
+
+/* SVG charts (self-contained, no external libs) */
+.svg-chart {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.chart-tip {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.drilldown-panel {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+
+.drilldown-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.date-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.seg-donut-slice {
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.seg-donut-slice:active {
+  opacity: 0.7;
+}
+
+@media (min-width: 768px) {
+  #app {
+    max-width: 480px;
+    margin: 0 auto;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
+  }
+  .fab {
+    right: calc(50% - 240px + 20px);
+  }
+}
+
+</style>
+</head>
+<body>
+  <div id="app">
+    <!-- Top header -->
+    <header id="top-header">
+      <button id="back-btn" class="icon-btn hidden" aria-label="返回">
+        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M15.5 19L8.5 12l7-7 1.4 1.4L11.3 12l5.6 5.6z"/></svg>
+      </button>
+      <h1 id="page-title">今日</h1>
+      <button id="header-action" class="icon-btn hidden" aria-label="搜索">
+        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
+      </button>
+    </header>
+
+    <!-- Main content -->
+    <main id="main-content">
+      <!-- Today view -->
+      <section id="view-today" class="view active">
+        <div class="search-bar" id="today-search-bar" style="display:none">
+          <input type="search" id="history-search" placeholder="搜索工作内容、备忘、板块...">
+        </div>
+        <div class="date-picker-bar" id="today-date-bar">
+          <button id="prev-day" class="day-nav" aria-label="前一天">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M15.5 19L8.5 12l7-7 1.4 1.4L11.3 12l5.6 5.6z"/></svg>
+          </button>
+          <input type="date" id="selected-date" class="date-input">
+          <button id="next-day" class="day-nav" aria-label="后一天">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M8.5 5l7 7-7 7-1.4-1.4L12.7 12 7.1 6.4z"/></svg>
+          </button>
+          <button id="today-btn" class="today-btn">今天</button>
+        </div>
+
+        <div class="summary-card" id="day-summary">
+          <div class="summary-total">
+            <span class="summary-num" id="total-hours">0</span>
+            <span class="summary-unit">小时</span>
+          </div>
+          <div class="summary-detail">
+            <div class="summary-item"><span class="summary-label">已完成</span><span id="task-count">0</span></div>
+            <div class="summary-item"><span class="summary-label">计划</span><span id="plan-count">0</span></div>
+          </div>
+        </div>
+
+        <!-- Pending plans (no fixed date) -->
+        <div class="pending-plans" id="pending-plans" style="display:none">
+          <div class="pending-header" onclick="togglePending()">
+            <span class="pending-title">📅 未来计划</span>
+            <span class="pending-count" id="pending-count">0</span>
+            <span class="pending-arrow" id="pending-arrow">▾</span>
+          </div>
+          <div class="pending-body" id="pending-body"></div>
+        </div>
+
+        <div class="section-list" id="log-list">
+          <div class="empty-state">
+            <div class="empty-icon">📝</div>
+            <p>还没有记录，点击右下角按钮开始记录</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Form view -->
+      <section id="view-form" class="view">
+        <form id="log-form" class="form-card">
+          <input type="hidden" id="log-id">
+
+          <div class="form-group">
+            <div class="row-between">
+              <label>类型</label>
+              <div class="segment">
+                <button type="button" class="seg-btn active" data-status="done" onclick="setStatus('done')">已完成</button>
+                <button type="button" class="seg-btn" data-status="plan" onclick="setStatus('plan')">计划</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group" id="date-group">
+            <label for="log-date" id="date-label">日期</label>
+            <input type="date" id="log-date">
+            <div class="date-hint" id="date-hint" style="display:none">可选择一个具体日期（未来的计划也直接选日期即可）</div>
+          </div>
+
+          <div class="form-group">
+            <label>业务板块</label>
+            <div class="section-selector" id="section-selector"></div>
+          </div>
+
+          <div class="form-group">
+            <label>业务</label>
+            <div class="business-selector" id="business-selector"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="log-task">工作内容</label>
+            <input type="text" id="log-task" placeholder="简要描述做了什么/要做什么" required maxlength="100">
+          </div>
+
+          <div class="form-group" id="duration-group">
+            <label for="log-duration">耗时（半小时为单位）</label>
+            <div class="duration-picker">
+              <button type="button" id="dur-dec" class="dur-btn">-</button>
+              <input type="number" id="log-duration" value="2" min="1" max="48" step="1">
+              <button type="button" id="dur-inc" class="dur-btn">+</button>
+            </div>
+            <div class="duration-hint" id="duration-hint">1.0 小时</div>
+            <div class="dur-presets">
+              <button type="button" data-val="1">0.5h</button>
+              <button type="button" data-val="2">1h</button>
+              <button type="button" data-val="4">2h</button>
+              <button type="button" data-val="8">4h</button>
+              <button type="button" data-val="16">8h</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="log-notes">备忘（选填）</label>
+            <textarea id="log-notes" rows="2" placeholder="补充说明、链接、感想等" maxlength="500"></textarea>
+          </div>
+
+          <div class="form-group">
+            <div class="row-between">
+              <label>待办清单（选填）</label>
+              <button type="button" class="add-todo-btn" onclick="addTodoItem()">+ 添加</button>
+            </div>
+            <div id="todo-list" class="todo-edit-list"></div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" id="cancel-btn" class="btn btn-secondary">取消</button>
+            <button type="submit" class="btn btn-primary">保存</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Calendar view -->
+      <section id="view-calendar" class="view">
+        <div class="cal-nav">
+          <button id="cal-prev" class="day-nav" aria-label="上个月">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M15.5 19L8.5 12l7-7 1.4 1.4L11.3 12l5.6 5.6z"/></svg>
+          </button>
+          <span id="cal-title" class="cal-title"></span>
+          <button id="cal-next" class="day-nav" aria-label="下个月">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M8.5 5l7 7-7 7-1.4-1.4L12.7 12 7.1 6.4z"/></svg>
+          </button>
+        </div>
+        <div class="cal-weekdays">
+          <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+        <div class="cal-legend">
+          <span class="legend-dot" style="background:#cf0a2c"></span>已完成
+          <span class="legend-dot" style="background:#ff9500"></span>计划
+        </div>
+        <div class="cal-day-detail" id="cal-day-detail"></div>
+      </section>
+
+      <!-- Memo view -->
+      <section id="view-memo" class="view">
+        <div class="form-group">
+          <label>选择业务板块</label>
+          <div class="section-selector" id="memo-section-selector"></div>
+        </div>
+        <div class="form-group" id="memo-business-group" style="display:none">
+          <label>选择业务</label>
+          <div class="business-selector" id="memo-business-selector"></div>
+        </div>
+        <div id="memo-content">
+          <div class="empty-state">
+            <div class="empty-icon">🗒️</div>
+            <p>选择板块和业务，查看所有备忘与待办</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Stats view -->
+      <section id="view-stats" class="view">
+        <div class="stats-tabs">
+          <button class="tab active" data-range="week">本周</button>
+          <button class="tab" data-range="month">本月</button>
+          <button class="tab" data-range="all">全部</button>
+        </div>
+
+        <div class="stats-overview">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-total-hours">0</div>
+            <div class="stat-label">总小时数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-total-tasks">0</div>
+            <div class="stat-label">已完成</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-avg-daily">0</div>
+            <div class="stat-label">日均小时</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-active-days">0</div>
+            <div class="stat-label">活跃天数</div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3 class="chart-title">各板块耗时分布 <span class="chart-tip">（点击板块查看业务明细）</span></h3>
+          <div class="chart-container" id="chart-section-wrap">
+            <svg id="chart-section" class="svg-chart" viewBox="0 0 300 220" preserveAspectRatio="xMidYMid meet"></svg>
+          </div>
+          <div id="chart-drilldown" class="drilldown-panel" style="display:none"></div>
+        </div>
+
+        <div class="chart-card">
+          <h3 class="chart-title">每日耗时趋势</h3>
+          <div class="chart-container" id="chart-daily-wrap">
+            <svg id="chart-daily" class="svg-chart" viewBox="0 0 320 200" preserveAspectRatio="xMidYMid meet"></svg>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3 class="chart-title">板块 / 业务明细</h3>
+          <div id="section-breakdown"></div>
+        </div>
+      </section>
+
+      <!-- Settings view -->
+      <section id="view-settings" class="view">
+        <div class="settings-group">
+          <h3 class="group-title">业务板块管理</h3>
+          <p class="group-desc">点击板块编辑名称/颜色/业务，点 × 删除</p>
+          <div id="section-list" class="settings-section-list"></div>
+          <button id="add-section-btn" class="btn btn-outline full">+ 添加板块</button>
+        </div>
+
+        <div class="settings-group">
+          <h3 class="group-title">数据导出</h3>
+          <button id="export-csv-btn" class="btn btn-outline full">导出明细 CSV</button>
+          <button id="export-json-btn" class="btn btn-outline full">导出 JSON 完整备份</button>
+          <button id="summary-btn" class="btn btn-outline full">生成工作总结（月/季/半年/年）</button>
+          <button id="import-json-btn" class="btn btn-outline full">导入 JSON 备份</button>
+          <input type="file" id="import-file" accept=".json,application/json" hidden>
+        </div>
+
+        <div class="settings-group danger-zone">
+          <h3 class="group-title">数据管理</h3>
+          <p class="group-desc" style="color:var(--text-tertiary);font-size:12px">此区域操作不可恢复，请谨慎</p>
+          <button id="clear-data-btn" class="btn btn-danger-ghost full">清空所有数据</button>
+        </div>
+
+        <div class="settings-group">
+          <div class="about-info">
+            <p>工作日志 v2.0.0</p>
+            <p class="about-sub">专为华为手机优化 · 离线可用</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- FAB for add -->
+    <button id="fab" class="fab" aria-label="添加记录">
+      <svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg>
+    </button>
+
+    <!-- Bottom navigation -->
+    <nav id="bottom-nav">
+      <button class="nav-item active" data-view="today">
+        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+        <span>今日</span>
+      </button>
+      <button class="nav-item" data-view="calendar">
+        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
+        <span>日历</span>
+      </button>
+      <button class="nav-item" data-view="memo">
+        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h10v2H7zm0-3h10v2H7zm0 6h6v2H7z"/></svg>
+        <span>备忘</span>
+      </button>
+      <button class="nav-item" data-view="stats">
+        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/></svg>
+        <span>统计</span>
+      </button>
+      <button class="nav-item" data-view="settings">
+        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94 0 .31.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+        <span>设置</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Modal for section/business edit -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <h3 id="modal-title">编辑板块</h3>
+      <div class="form-group">
+        <label for="section-name-input">板块名称</label>
+        <input type="text" id="section-name-input" maxlength="20" placeholder="如：项目管理">
+      </div>
+      <div class="form-group">
+        <label>颜色</label>
+        <div class="color-picker" id="color-picker"></div>
+      </div>
+      <div class="form-group" id="business-edit-group">
+        <label>业务列表</label>
+        <div id="business-edit-list" class="business-edit-list"></div>
+        <button type="button" class="btn btn-outline full" onclick="addBusinessEdit()">+ 添加业务</button>
+      </div>
+      <div class="form-actions">
+        <button id="modal-cancel" class="btn btn-secondary">取消</button>
+        <button id="modal-save" class="btn btn-primary">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary export modal -->
+  <div id="summary-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <h3>生成工作总结</h3>
+      <div class="form-group">
+        <label>总结周期</label>
+        <div class="bucket-selector">
+          <button type="button" class="bucket-btn active" data-summary="month" onclick="setSummaryType('month')">月度</button>
+          <button type="button" class="bucket-btn" data-summary="quarter" onclick="setSummaryType('quarter')">季度</button>
+          <button type="button" class="bucket-btn" data-summary="half" onclick="setSummaryType('half')">半年度</button>
+          <button type="button" class="bucket-btn" data-summary="year" onclick="setSummaryType('year')">年度</button>
+        </div>
+      </div>
+      <div class="form-group" id="summary-period-group">
+        <label id="summary-period-label">选择月份</label>
+        <input type="month" id="summary-period" class="date-input">
+      </div>
+      <div class="form-actions">
+        <button onclick="closeSummaryModal()" class="btn btn-secondary">取消</button>
+        <button onclick="generateSummary()" class="btn btn-primary">生成并导出</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+// ============= Constants =============
+const STORAGE_KEYS = { sections: 'worklog_sections', logs: 'worklog_logs', version: 'worklog_version' };
+
+const DEFAULT_COLORS = ['#cf0a2c','#ff9500','#ffcc00','#34c759','#00c7be','#007aff','#5856d6','#af52de','#ff2d55','#8e8e93'];
+
+const DEFAULT_SECTIONS = [
+  { id: 's1', name: '科室', color: '#007aff', businesses: [{id:'b1',name:'科室管理'},{id:'b2',name:'技术图谱'},{id:'b3',name:'标准化'},{id:'b4',name:'总师业务'}] },
+  { id: 's2', name: '课题', color: '#af52de', businesses: [{id:'b5',name:'碳纳米'},{id:'b6',name:'可靠性'},{id:'b7',name:'修理'}] },
+  { id: 's3', name: '专项', color: '#5856d6', businesses: [{id:'b8',name:'党建'},{id:'b9',name:'科技月'}] },
+  { id: 's4', name: '提升', color: '#34c759', businesses: [{id:'b10',name:'技术'},{id:'b11',name:'管理'}] },
+  { id: 's5', name: '杂项', color: '#8e8e93', businesses: [{id:'b12',name:'部门'}] },
+];
+
+const BUCKET_LABELS = { week: '下周', month: '下月', quarter: '下季度' };
+
+// ============= Storage =============
+const Store = {
+  getSections() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.sections);
+      if (data) {
+        const sections = JSON.parse(data);
+        // Migration: ensure each section has businesses array
+        let changed = false;
+        sections.forEach(s => {
+          if (!s.businesses) { s.businesses = [{ id: Utils.uid(), name: '默认业务' }]; changed = true; }
+        });
+        if (changed) this.saveSections(sections);
+        return sections;
+      }
+    } catch (e) {}
+    const defaults = JSON.parse(JSON.stringify(DEFAULT_SECTIONS));
+    localStorage.setItem(STORAGE_KEYS.sections, JSON.stringify(defaults));
+    return defaults;
+  },
+  saveSections(sections) { localStorage.setItem(STORAGE_KEYS.sections, JSON.stringify(sections)); },
+  getLogs() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.logs);
+      if (data) {
+        const logs = JSON.parse(data);
+        // Migration: add new fields
+        let changed = false;
+        logs.forEach(l => {
+          if (!l.businessId) { l.businessId = this._firstBusinessId(l.sectionId); changed = true; }
+          if (!l.status) { l.status = 'done'; changed = true; }
+          if (!l.todos) { l.todos = []; changed = true; }
+          if (l.planBucket === undefined) { l.planBucket = null; changed = true; }
+        });
+        if (changed) this.saveLogs(logs);
+        return logs;
+      }
+    } catch (e) {}
+    return [];
+  },
+  _firstBusinessId(sectionId) {
+    const s = this.getSections().find(x => x.id === sectionId);
+    return (s && s.businesses && s.businesses[0]) ? s.businesses[0].id : null;
+  },
+  saveLogs(logs) { localStorage.setItem(STORAGE_KEYS.logs, JSON.stringify(logs)); },
+  addLog(log) { const logs = this.getLogs(); logs.push(log); this.saveLogs(logs); },
+  updateLog(id, updates) {
+    const logs = this.getLogs();
+    const idx = logs.findIndex(l => l.id === id);
+    if (idx >= 0) { logs[idx] = { ...logs[idx], ...updates }; this.saveLogs(logs); }
+  },
+  deleteLog(id) { this.saveLogs(this.getLogs().filter(l => l.id !== id)); },
+  clearAll() {
+    localStorage.removeItem(STORAGE_KEYS.logs);
+    localStorage.removeItem(STORAGE_KEYS.sections);
+  }
+};
+
+// ============= Utils =============
+const Utils = {
+  uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); },
+  todayStr() { return new Date().toISOString().slice(0, 10); },
+  formatDate(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    const wd = ['周日','周一','周二','周三','周四','周五','周六'][d.getDay()];
+    return `${d.getMonth()+1}月${d.getDate()}日 ${wd}`;
+  },
+  formatDateFull(d) {
+    d = (d instanceof Date) ? d : new Date(d);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  },
+  addDays(dateStr, days) { const d = new Date(dateStr); d.setDate(d.getDate()+days); return this.formatDateFull(d); },
+  durationToHours(h) { return (h*0.5).toFixed(1).replace(/\.0$/,''); },
+  getSection(id) { return this.getSections().find(s => s.id === id); },
+  getSectionName(id) { const s = Store.getSections().find(x=>x.id===id); return s?s.name:'未分类'; },
+  getSectionColor(id) { const s = Store.getSections().find(x=>x.id===id); return s?s.color:'#8e8e93'; },
+  getBusinessName(sectionId, businessId) {
+    const s = Store.getSections().find(x=>x.id===sectionId);
+    if (!s) return '未分类';
+    const b = (s.businesses||[]).find(x=>x.id===businessId);
+    return b ? b.name : '未分类';
+  },
+  download(filename, content, mime) {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  }
+};
+
+// ============= State =============
+const State = {
+  currentView: 'today',
+  selectedDate: Utils.todayStr(),
+  selectedSectionId: null,
+  selectedBusinessId: null,
+  editingLogId: null,
+  statsRange: 'week',
+  charts: { section: null, daily: null },
+  formStatus: 'done',
+  formBucket: '',
+  formTodos: [],
+  calYear: new Date().getFullYear(),
+  calMonth: new Date().getMonth(),
+  calSelectedDate: null,
+  pendingOpen: false,
+  memoSectionId: null,
+  memoBusinessId: null,
+  summaryType: 'month',
+  editingSectionId: null,
+  editingBusinesses: [],
+  selectedColor: DEFAULT_COLORS[0],
+  searchMode: false
+};
+
+// ============= Toast =============
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>el.classList.remove('show'), 2000);
+}
+
+function escapeHtml(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+// ============= Views =============
+const Views = {
+  show(view) {
+    State.currentView = view;
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-'+view).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.view===view));
+    const titles = { today:'今日', form:'记录', calendar:'日历', memo:'备忘', stats:'统计', settings:'设置' };
+    document.getElementById('page-title').textContent = titles[view] || '工作日志';
+    const backViews = ['form'];
+    document.getElementById('back-btn').classList.toggle('hidden', !backViews.includes(view));
+    // Header search action (history search) only on today
+    document.getElementById('header-action').classList.toggle('hidden', view !== 'today');
+    // FAB on today, calendar
+    document.getElementById('fab').classList.toggle('hidden', view!=='today' && view!=='calendar');
+
+    if (view==='today') renderToday();
+    if (view==='calendar') renderCalendar();
+    if (view==='memo') renderMemo();
+    if (view==='stats') renderStats();
+    if (view==='settings') renderSettings();
+  }
+};
+
+// ============= Today View =============
+function renderToday() {
+  document.getElementById('selected-date').value = State.selectedDate;
+
+  const allLogs = Store.getLogs();
+  const dayLogs = allLogs.filter(l => l.date === State.selectedDate);
+  const todayStr = Utils.todayStr();
+  const pending = allLogs.filter(l => l.status === 'plan' && (!l.date || l.date > todayStr))
+    .sort((a,b)=>(a.date||'9999-99-99').localeCompare(b.date||'9999-99-99'));
+
+  // Future plans section
+  const pendingEl = document.getElementById('pending-plans');
+  if (pending.length > 0) {
+    pendingEl.style.display = '';
+    document.getElementById('pending-count').textContent = pending.length;
+    const body = document.getElementById('pending-body');
+    body.classList.toggle('show', State.pendingOpen);
+    document.getElementById('pending-arrow').classList.toggle('open', State.pendingOpen);
+    body.innerHTML = pending.map(l => compactLogCard(l)).join('');
+  } else {
+    pendingEl.style.display = 'none';
+  }
+
+  // Search mode
+  if (State.searchMode) {
+    renderHistoryList();
+    return;
+  }
+
+  const done = dayLogs.filter(l => l.status === 'done');
+  const plans = dayLogs.filter(l => l.status === 'plan');
+
+  const totalUnits = done.reduce((s,l)=>s+l.duration,0);
+  document.getElementById('total-hours').textContent = Utils.durationToHours(totalUnits);
+  document.getElementById('task-count').textContent = done.length;
+  document.getElementById('plan-count').textContent = plans.length;
+
+  const list = document.getElementById('log-list');
+  if (dayLogs.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📝</div><p>还没有记录，点击右下角按钮开始记录</p></div>`;
+    return;
+  }
+  let html = '';
+  if (plans.length) {
+    html += '<div class="history-group-title" style="margin-top:4px">计划</div>';
+    html += plans.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)).map(l=>logCardHTML(l,true)).join('');
+  }
+  if (done.length) {
+    html += '<div class="history-group-title" style="margin-top:12px">已完成</div>';
+    html += done.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)).map(l=>logCardHTML(l,true)).join('');
+  }
+  list.innerHTML = html;
+}
+
+function togglePending() {
+  State.pendingOpen = !State.pendingOpen;
+  renderToday();
+}
+
+function compactLogCard(l) {
+  const color = Utils.getSectionColor(l.sectionId);
+  return `<div class="log-card is-plan" style="border-left-color:${color};padding:10px 14px;margin-bottom:8px">
+    <div class="log-header">
+      <div class="log-task" style="font-size:14px">${escapeHtml(l.task)}</div>
+    </div>
+    <div class="log-meta">
+      <span class="plan-bucket-tag">${l.date ? Utils.formatDate(l.date) : '未定日期'}</span>
+      <span class="log-section-tag" style="background:${color}">${escapeHtml(Utils.getSectionName(l.sectionId))} · ${escapeHtml(Utils.getBusinessName(l.sectionId,l.businessId))}</span>
+    </div>
+    <div class="log-actions" style="margin-top:8px">
+      <button class="log-btn" onclick="editLog('${l.id}')">编辑</button>
+      <button class="log-btn danger" onclick="deleteLog('${l.id}')">删除</button>
+    </div>
+  </div>`;
+}
+
+function logCardHTML(log, showActions) {
+  const color = Utils.getSectionColor(log.sectionId);
+  const isPlan = log.status === 'plan';
+  const notes = log.notes ? `<div class="log-notes">${escapeHtml(log.notes)}</div>` : '';
+  const todosHtml = (log.todos && log.todos.length) ? renderTodoDisplay(log) : '';
+  const actions = showActions ? `<div class="log-actions">
+    <button class="log-btn" onclick="editLog('${log.id}')">编辑</button>
+    <button class="log-btn danger" onclick="deleteLog('${log.id}')">删除</button>
+  </div>` : '';
+  const badge = isPlan ? '<span class="plan-badge">计划</span>' : '';
+  const bucketTag = (isPlan && log.planBucket) ? `<span class="plan-bucket-tag">${BUCKET_LABELS[log.planBucket]}</span>` : '';
+  return `<div class="log-card ${isPlan?'is-plan':''}" style="border-left-color:${color}">
+    <div class="log-header">
+      <div class="log-task">${badge}${escapeHtml(log.task)}</div>
+      <div class="log-duration">${Utils.durationToHours(log.duration)}h</div>
+    </div>
+    <div class="log-meta">
+      <span class="log-section-tag" style="background:${color}">${escapeHtml(Utils.getSectionName(log.sectionId))} · ${escapeHtml(Utils.getBusinessName(log.sectionId,log.businessId))}</span>
+      <span class="log-date-text">${log.date?Utils.formatDate(log.date):(BUCKET_LABELS[log.planBucket]||'待定')}</span>
+      ${bucketTag}
+    </div>
+    ${notes}
+    ${todosHtml}
+    ${actions}
+  </div>`;
+}
+
+function renderTodoDisplay(log) {
+  return `<div class="todo-list">${log.todos.map((t,i)=>`
+    <label class="todo-item ${t.done?'done':''}">
+      <input type="checkbox" ${t.done?'checked':''} onchange="toggleTodo('${log.id}',${i})">
+      <span>${escapeHtml(t.text)}</span>
+    </label>`).join('')}</div>`;
+}
+
+function toggleTodo(logId, idx) {
+  const logs = Store.getLogs();
+  const l = logs.find(x=>x.id===logId);
+  if (!l || !l.todos[idx]) return;
+  l.todos[idx].done = !l.todos[idx].done;
+  Store.saveLogs(logs);
+  if (State.currentView==='today') renderToday();
+  else if (State.currentView==='memo') renderMemo();
+  else if (State.currentView==='calendar') renderCalendar();
+}
+
+// ============= History (search mode in today) =============
+function renderHistoryList() {
+  const search = document.getElementById('history-search').value.toLowerCase().trim();
+  let logs = Store.getLogs().slice().sort((a,b)=>{
+    const da = a.date || '9999';
+    const db = b.date || '9999';
+    return db.localeCompare(da) || (b.createdAt||0)-(a.createdAt||0);
+  });
+  if (search) {
+    logs = logs.filter(l =>
+      l.task.toLowerCase().includes(search) ||
+      (l.notes&&l.notes.toLowerCase().includes(search)) ||
+      Utils.getSectionName(l.sectionId).toLowerCase().includes(search) ||
+      Utils.getBusinessName(l.sectionId,l.businessId).toLowerCase().includes(search)
+    );
+  }
+  const list = document.getElementById('log-list');
+  if (logs.length===0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><p>没有匹配的记录</p></div>`;
+    return;
+  }
+  const groups = {};
+  logs.forEach(l=>{ const k = l.date || '待定计划'; if(!groups[k])groups[k]=[]; groups[k].push(l); });
+  list.innerHTML = Object.entries(groups).map(([date,items])=>{
+    const total = items.reduce((s,l)=>s+(l.status==='done'?l.duration:0),0);
+    return `<div class="history-group">
+      <div class="history-group-title">${date==='待定计划'?'📌 待定计划':Utils.formatDate(date)} · 已完成 ${Utils.durationToHours(total)}h</div>
+      ${items.map(l=>logCardHTML(l,true)).join('')}
+    </div>`;
+  }).join('');
+}
+
+// ============= Form =============
+function openForm(logId) {
+  State.editingLogId = logId || null;
+  document.getElementById('log-form').reset();
+  document.getElementById('log-id').value = '';
+  document.getElementById('log-date').value = State.selectedDate;
+  document.getElementById('log-duration').value = 2;
+  State.formStatus = 'done';
+  State.formTodos = [];
+  updateDurationHint();
+  updateStatusUI();
+
+  const sections = Store.getSections();
+  State.selectedSectionId = sections.length ? sections[0].id : null;
+  State.selectedBusinessId = (sections[0]&&sections[0].businesses&&sections[0].businesses[0]) ? sections[0].businesses[0].id : null;
+
+  if (logId) {
+    const log = Store.getLogs().find(l=>l.id===logId);
+    if (log) {
+      document.getElementById('log-id').value = log.id;
+      document.getElementById('log-date').value = log.date || '';
+      document.getElementById('log-task').value = log.task;
+      document.getElementById('log-duration').value = log.duration;
+      document.getElementById('log-notes').value = log.notes || '';
+      State.selectedSectionId = log.sectionId;
+      State.selectedBusinessId = log.businessId;
+      State.formStatus = log.status || 'done';
+      State.formTodos = JSON.parse(JSON.stringify(log.todos || []));
+      updateStatusUI();
+      updateDurationHint();
+    }
+  }
+  renderSectionSelector();
+  renderBusinessSelector();
+  renderTodoEditList();
+  Views.show('form');
+  document.getElementById('page-title').textContent = logId ? '编辑记录' : '新建记录';
+}
+
+function renderSectionSelector() {
+  const c = document.getElementById('section-selector');
+  const sections = Store.getSections();
+  if (!sections.length) { c.innerHTML='<p style="color:var(--text-secondary);font-size:14px">请先在设置中添加业务板块</p>'; return; }
+  c.innerHTML = sections.map(s=>`
+    <button type="button" class="section-chip ${s.id===State.selectedSectionId?'active':''}"
+            style="${s.id===State.selectedSectionId?`background:${s.color}`:''}"
+            onclick="selectSection('${s.id}')">${escapeHtml(s.name)}</button>`).join('');
+}
+
+function renderBusinessSelector() {
+  const c = document.getElementById('business-selector');
+  const s = Store.getSections().find(x=>x.id===State.selectedSectionId);
+  const bs = (s&&s.businesses)||[];
+  if (!bs.length) { c.innerHTML='<p style="color:var(--text-secondary);font-size:14px">该板块暂无业务，请在设置中添加</p>'; return; }
+  c.innerHTML = bs.map(b=>`
+    <button type="button" class="business-chip ${b.id===State.selectedBusinessId?'active':''}"
+            onclick="selectBusiness('${b.id}')">${escapeHtml(b.name)}</button>`).join('');
+}
+
+function selectSection(id) {
+  State.selectedSectionId = id;
+  const s = Store.getSections().find(x=>x.id===id);
+  State.selectedBusinessId = (s&&s.businesses&&s.businesses[0]) ? s.businesses[0].id : null;
+  renderSectionSelector();
+  renderBusinessSelector();
+}
+function selectBusiness(id) { State.selectedBusinessId = id; renderBusinessSelector(); }
+
+function setStatus(status) {
+  State.formStatus = status;
+  updateStatusUI();
+}
+
+function updateStatusUI() {
+  document.querySelectorAll('.seg-btn').forEach(b=>b.classList.toggle('active', b.dataset.status===State.formStatus));
+  const isPlan = State.formStatus === 'plan';
+  document.getElementById('date-label').textContent = isPlan ? '计划日期' : '日期';
+  document.getElementById('date-hint').style.display = isPlan ? '' : 'none';
+  document.getElementById('date-group').style.display = '';
+}
+
+function addTodoItem() {
+  State.formTodos.push({ text: '', done: false });
+  renderTodoEditList();
+}
+function removeTodoItem(idx) { State.formTodos.splice(idx,1); renderTodoEditList(); }
+function renderTodoEditList() {
+  const c = document.getElementById('todo-list');
+  c.innerHTML = State.formTodos.map((t,i)=>`
+    <div class="todo-edit-item">
+      <input type="checkbox" ${t.done?'checked':''} onchange="State.formTodos[${i}].done=this.checked">
+      <input type="text" value="${escapeHtml(t.text)}" placeholder="待办事项..." oninput="State.formTodos[${i}].text=this.value">
+      <button type="button" class="todo-del" onclick="removeTodoItem(${i})">×</button>
+    </div>`).join('');
+}
+
+function updateDurationHint() {
+  const v = parseInt(document.getElementById('log-duration').value)||0;
+  document.getElementById('duration-hint').textContent = `${Utils.durationToHours(v)} 小时`;
+}
+
+// ============= Calendar =============
+function renderCalendar() {
+  const y = State.calYear, m = State.calMonth;
+  document.getElementById('cal-title').textContent = `${y}年${m+1}月`;
+  const grid = document.getElementById('cal-grid');
+  const firstDay = new Date(y, m, 1);
+  let startWeekday = firstDay.getDay(); // 0=Sun
+  startWeekday = startWeekday === 0 ? 6 : startWeekday - 1; // Mon=0
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const prevDays = new Date(y, m, 0).getDate();
+
+  const logs = Store.getLogs();
+  const today = Utils.todayStr();
+
+  let html = '';
+  // prev month days
+  for (let i=startWeekday-1; i>=0; i--) {
+    const day = prevDays - i;
+    const dateStr = Utils.formatDateFull(new Date(y, m-1, day));
+    html += calCell(dateStr, day, true);
+  }
+  // current month
+  for (let d=1; d<=daysInMonth; d++) {
+    const dateStr = Utils.formatDateFull(new Date(y, m, d));
+    html += calCell(dateStr, d, false, dateStr===today);
+  }
+  // next month fill
+  const total = startWeekday + daysInMonth;
+  const remain = (7 - total % 7) % 7;
+  for (let d=1; d<=remain; d++) {
+    const dateStr = Utils.formatDateFull(new Date(y, m+1, d));
+    html += calCell(dateStr, d, true);
+  }
+  grid.innerHTML = html;
+
+  // Day detail
+  const detail = document.getElementById('cal-day-detail');
+  const sel = State.calSelectedDate;
+  if (sel) {
+    const dayLogs = logs.filter(l=>l.date===sel);
+    const totalDone = dayLogs.filter(l=>l.status==='done').reduce((s,l)=>s+l.duration,0);
+    detail.innerHTML = `<div class="cal-detail-title">${Utils.formatDate(sel)} · 已完成 ${Utils.durationToHours(totalDone)}h</div>` +
+      (dayLogs.length ? dayLogs.map(l=>logCardHTML(l,true)).join('') : '<p style="color:var(--text-secondary);font-size:14px">当天无记录</p>');
+  } else {
+    detail.innerHTML = '';
+  }
+}
+
+function calCell(dateStr, dayNum, otherMonth, isToday) {
+  const logs = Store.getLogs().filter(l=>l.date===dateStr);
+  const sections = [...new Set(logs.map(l=>l.sectionId))];
+  const dots = sections.slice(0,4).map(sid=>`<span class="cal-dot" style="background:${Utils.getSectionColor(sid)}"></span>`).join('');
+  const hasPlan = logs.some(l=>l.status==='plan');
+  const planDot = hasPlan ? `<span class="cal-dot" style="background:var(--warning)"></span>` : '';
+  const selected = State.calSelectedDate === dateStr;
+  const cls = ['cal-cell'];
+  if (otherMonth) cls.push('other-month');
+  if (isToday) cls.push('today');
+  if (selected) cls.push('selected');
+  return `<div class="${cls.join(' ')}" onclick="selectCalDate('${dateStr}')">
+    <span class="cal-day-num">${dayNum}</span>
+    <div class="cal-dots">${dots}${planDot}</div>
+  </div>`;
+}
+
+function selectCalDate(dateStr) {
+  State.calSelectedDate = dateStr;
+  renderCalendar();
+}
+
+// ============= Memo View =============
+function renderMemo() {
+  const sc = document.getElementById('memo-section-selector');
+  const sections = Store.getSections();
+  sc.innerHTML = sections.map(s=>`
+    <button type="button" class="section-chip ${s.id===State.memoSectionId?'active':''}"
+            style="${s.id===State.memoSectionId?`background:${s.color}`:''}"
+            onclick="selectMemoSection('${s.id}')">${escapeHtml(s.name)}</button>`).join('') || '<p style="color:var(--text-secondary)">暂无板块</p>';
+
+  const bg = document.getElementById('memo-business-group');
+  const content = document.getElementById('memo-content');
+  if (!State.memoSectionId) {
+    bg.style.display = 'none';
+    content.innerHTML = `<div class="empty-state"><div class="empty-icon">🗒️</div><p>选择板块和业务，查看所有备忘与待办</p></div>`;
+    return;
+  }
+  const s = sections.find(x=>x.id===State.memoSectionId);
+  bg.style.display = '';
+  const bs = s.businesses || [];
+  document.getElementById('memo-business-selector').innerHTML = bs.map(b=>`
+    <button type="button" class="business-chip ${b.id===State.memoBusinessId?'active':''}"
+            onclick="selectMemoBusiness('${b.id}')">${escapeHtml(b.name)}</button>`).join('');
+
+  if (!State.memoBusinessId) {
+    content.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>选择一个业务查看详情</p></div>`;
+    return;
+  }
+
+  const logs = Store.getLogs().filter(l=>l.sectionId===State.memoSectionId && l.businessId===State.memoBusinessId)
+    .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+
+  const allTodos = logs.flatMap(l=>(l.todos||[]).map(t=>({...t, logId:l.id, logDate:l.date})));
+  const doneTodos = allTodos.filter(t=>t.done).length;
+
+  content.innerHTML = `
+    <div class="memo-summary">
+      <div class="memo-summary-item"><div class="memo-summary-num">${logs.length}</div><div class="memo-summary-label">记录数</div></div>
+      <div class="memo-summary-item"><div class="memo-summary-num">${allTodos.length}</div><div class="memo-summary-label">待办总数</div></div>
+      <div class="memo-summary-item"><div class="memo-summary-num">${doneTodos}</div><div class="memo-summary-label">已完成</div></div>
+    </div>
+    ${logs.length ? logs.map(l=>memoLogCard(l)).join('') : '<div class="empty-state"><div class="empty-icon">📭</div><p>该业务暂无记录</p></div>'}
+  `;
+}
+
+function memoLogCard(l) {
+  const todosHtml = (l.todos&&l.todos.length) ? `<div class="todo-list">${l.todos.map((t,i)=>`
+    <label class="todo-item ${t.done?'done':''}">
+      <input type="checkbox" ${t.done?'checked':''} onchange="toggleTodo('${l.id}',${i})">
+      <span>${escapeHtml(t.text)}</span>
+    </label>`).join('')}</div>` : '';
+  const notesHtml = l.notes ? `<div class="memo-log-notes">${escapeHtml(l.notes)}</div>` : '';
+  return `<div class="memo-log-card">
+    <div class="memo-log-date">${l.date?Utils.formatDate(l.date):(BUCKET_LABELS[l.planBucket]||'待定计划')} ${l.status==='plan'?'· 计划':''}</div>
+    <div class="memo-log-task">${escapeHtml(l.task)}</div>
+    ${notesHtml}
+    ${todosHtml}
+  </div>`;
+}
+
+function selectMemoSection(id) { State.memoSectionId = id; State.memoBusinessId = null; renderMemo(); }
+function selectMemoBusiness(id) { State.memoBusinessId = id; renderMemo(); }
+
+// ============= Stats =============
+function renderStats() {
+  const logs = Store.getLogs().filter(l=>l.status==='done' && l.date);
+  const now = new Date();
+  let rangeStart;
+  if (State.statsRange==='week') { const d=now.getDay()||7; rangeStart=new Date(now); rangeStart.setDate(now.getDate()-d+1); }
+  else if (State.statsRange==='month') rangeStart=new Date(now.getFullYear(),now.getMonth(),1);
+  else rangeStart=new Date(0);
+  rangeStart.setHours(0,0,0,0);
+  const filtered = logs.filter(l=>new Date(l.date)>=rangeStart);
+
+  const totalUnits = filtered.reduce((s,l)=>s+l.duration,0);
+  const days = new Set(filtered.map(l=>l.date));
+  document.getElementById('stat-total-hours').textContent = Utils.durationToHours(totalUnits);
+  document.getElementById('stat-total-tasks').textContent = filtered.length;
+  document.getElementById('stat-active-days').textContent = days.size;
+  document.getElementById('stat-avg-daily').textContent = days.size?Utils.durationToHours(Math.round(totalUnits/days.size)):'0';
+
+  // Section + business breakdown
+  const sectionMap = {};
+  filtered.forEach(l=>{
+    if (!sectionMap[l.sectionId]) sectionMap[l.sectionId] = { units:0, businesses:{} };
+    sectionMap[l.sectionId].units += l.duration;
+    sectionMap[l.sectionId].businesses[l.businessId] = (sectionMap[l.sectionId].businesses[l.businessId]||0) + l.duration;
+  });
+  const breakdown = Object.entries(sectionMap)
+    .map(([id,v])=>({ id, units:v.units, businesses:v.businesses, name:Utils.getSectionName(id), color:Utils.getSectionColor(id) }))
+    .sort((a,b)=>b.units-a.units);
+
+  // Save aggregation for drill-down
+  State.statsAgg = { breakdown, totalUnits };
+
+  const bdEl = document.getElementById('section-breakdown');
+  if (!breakdown.length) {
+    bdEl.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:20px">暂无数据</p>';
+  } else {
+    bdEl.innerHTML = breakdown.map(b=>{
+      const biz = Object.entries(b.businesses).map(([bid,u])=>({
+        name: Utils.getBusinessName(b.id, bid), units: u
+      })).sort((x,y)=>y.units-x.units);
+      return `<div class="breakdown-item" style="cursor:pointer" onclick="drillSection('${b.id}')">
+        <span class="breakdown-color" style="background:${b.color}"></span>
+        <span class="breakdown-name">${escapeHtml(b.name)} <span style="color:var(--text-tertiary);font-size:11px">▾</span></span>
+        <span class="breakdown-hours">${Utils.durationToHours(b.units)}h</span>
+        <span class="breakdown-pct">${totalUnits?Math.round(b.units/totalUnits*100):0}%</span>
+      </div>
+      <div class="business-breakdown">${biz.map(x=>`
+        <div class="breakdown-item">
+          <span class="breakdown-name">└ ${escapeHtml(x.name)}</span>
+          <span class="breakdown-hours">${Utils.durationToHours(x.units)}h</span>
+          <span class="breakdown-pct">${totalUnits?Math.round(x.units/totalUnits*100):0}%</span>
+        </div>`).join('')}</div>`;
+    }).join('');
+  }
+  renderCharts(filtered, breakdown, rangeStart);
+  // reset drilldown when stats re-rendered
+  const dd = document.getElementById('chart-drilldown');
+  if (dd) dd.style.display = 'none';
+}
+
+// ---- Self-contained SVG charts (no external library) ----
+function polar(cx,cy,r,angleDeg) {
+  const a = (angleDeg-90)*Math.PI/180;
+  return { x: cx + r*Math.cos(a), y: cy + r*Math.sin(a) };
+}
+function arcPath(cx,cy,rO,rI,startAngle,endAngle) {
+  const s = polar(cx,cy,rO,endAngle), e = polar(cx,cy,rO,startAngle);
+  const si = polar(cx,cy,rI,endAngle), ei = polar(cx,cy,rI,startAngle);
+  const large = (endAngle-startAngle) <= 180 ? 0 : 1;
+  return `M ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${rO} ${rO} 0 ${large} 0 ${e.x.toFixed(2)} ${e.y.toFixed(2)} L ${ei.x.toFixed(2)} ${ei.y.toFixed(2)} A ${rI} ${rI} 0 ${large} 1 ${si.x.toFixed(2)} ${si.y.toFixed(2)} Z`;
+}
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderCharts(logs, breakdown, rangeStart) {
+  const svgEl = document.getElementById('chart-section');
+  const totalUnits = breakdown.reduce((s,b)=>s+b.units,0);
+
+  // ---- Doughnut ----
+  if (!breakdown.length || totalUnits===0) {
+    svgEl.innerHTML = `<text x="150" y="110" text-anchor="middle" fill="#8a8a8e" font-size="14">暂无数据</text>`;
+  } else {
+    const cx=150, cy=100, rO=78, rI=50;
+    let start=0, paths='';
+    breakdown.forEach(b=>{
+      const ang = b.units/totalUnits*360;
+      const end = start+ang;
+      if (ang>0.2) paths += `<path class="seg-donut-slice" d="${arcPath(cx,cy,rO,rI,start,end)}" fill="${b.color}" onclick="drillSection('${b.id}')"></path>`;
+      start = end;
+    });
+    // center label
+    const center = `<text x="${cx}" y="${cy-4}" text-anchor="middle" fill="#1a1a1a" font-size="26" font-weight="700">${Utils.durationToHours(totalUnits)}</text>
+      <text x="${cx}" y="${cy+16}" text-anchor="middle" fill="#8a8a8e" font-size="12">总耗时(小时)</text>`;
+    // legend (2 columns)
+    let legend='';
+    breakdown.forEach((b,i)=>{
+      const col = i%2, row = Math.floor(i/2);
+      const lx = col===0 ? 12 : 158;
+      const ly = 196 + row*24;
+      legend += `<circle cx="${lx+6}" cy="${ly-4}" r="5" fill="${b.color}"/>
+        <text x="${lx+18}" y="${ly}" fill="#1a1a1a" font-size="12">${esc(b.name)} ${Utils.durationToHours(b.units)}h</text>`;
+    });
+    svgEl.innerHTML = paths + center + legend;
+  }
+
+  // ---- Daily bar ----
+  const days=[]; const now=new Date(); let cursor=new Date(rangeStart);
+  while (cursor<=now) { days.push(Utils.formatDateFull(cursor)); cursor.setDate(cursor.getDate()+1); }
+  const displayDays = days.slice(-30);
+  const dailyMap={}; logs.forEach(l=>{ dailyMap[l.date]=(dailyMap[l.date]||0)+l.duration; });
+  const vals = displayDays.map(d=>parseFloat(Utils.durationToHours(dailyMap[d]||0)));
+  const labels = displayDays.map(d=>{ const dt=new Date(d); return `${dt.getMonth()+1}/${dt.getDate()}`; });
+
+  const barSvg = document.getElementById('chart-daily');
+  const W=340,H=200, left=34, right=W-6, top=14, bottom=160;
+  const plotW = right-left, plotH = bottom-top;
+  const maxVal = Math.max(1, ...vals);
+  const n = vals.length || 1;
+  const step = plotW/n;
+  const bw = Math.max(2, step*0.62);
+  let bars='';
+  vals.forEach((v,i)=>{
+    const h = v/maxVal*plotH;
+    const x = left + i*step + (step-bw)/2;
+    const y = bottom-h;
+    if (v>0) bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="rgba(207,10,44,0.72)"></rect>`;
+  });
+  // gridlines + y labels
+  let grid='';
+  for (let g=0; g<=4; g++) {
+    const gy = top + plotH*(1-g/4);
+    const gv = Utils.durationToHours(Math.round(maxVal*g/4*2)/2) || (maxVal*g/4*0.5).toFixed(1);
+    grid += `<line x1="${left}" y1="${gy.toFixed(1)}" x2="${right}" y2="${gy.toFixed(1)}" stroke="#ebebed" stroke-width="1"/>
+      <text x="${left-6}" y="${(gy+3).toFixed(1)}" text-anchor="end" fill="#b8b8bd" font-size="9">${(maxVal*g/4).toFixed(0)}h</text>`;
+  }
+  // x labels (max ~6)
+  let xlabels='';
+  const tickEvery = Math.ceil(n/6);
+  labels.forEach((lab,i)=>{
+    if (i%tickEvery===0 || i===n-1) {
+      const x = left + i*step + step/2;
+      xlabels += `<text x="${x.toFixed(1)}" y="${bottom+14}" text-anchor="middle" fill="#b8b8bd" font-size="9">${lab}</text>`;
+    }
+  });
+  // baseline
+  const axis = `<line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" stroke="#ebebed" stroke-width="1"/>`;
+  barSvg.innerHTML = grid + axis + bars + xlabels +
+    (vals.every(v=>v===0) ? `<text x="${W/2}" y="${(top+plotH/2)}" text-anchor="middle" fill="#8a8a8e" font-size="14">暂无数据</text>` : '');
+}
+
+// ---- Drill-down: business breakdown for a section ----
+function drillSection(sectionId) {
+  const dd = document.getElementById('chart-drilldown');
+  const agg = State.statsAgg;
+  if (!agg) return;
+  const sec = agg.breakdown.find(b=>b.id===sectionId);
+  if (!sec) return;
+  const biz = Object.entries(sec.businesses).map(([bid,u])=>({
+    id: bid, name: Utils.getBusinessName(sectionId, bid), units: u
+  })).sort((a,b)=>b.units-a.units);
+  const rows = biz.map(x=>`
+    <div class="breakdown-item">
+      <span class="breakdown-color" style="background:${sec.color};width:10px;height:10px"></span>
+      <span class="breakdown-name">${escapeHtml(x.name)}</span>
+      <span class="breakdown-hours">${Utils.durationToHours(x.units)}h</span>
+      <span class="breakdown-pct">${sec.units?Math.round(x.units/sec.units*100):0}%</span>
+    </div>`).join('');
+  dd.innerHTML = `<div class="drilldown-title">
+      <span style="width:12px;height:12px;border-radius:50%;background:${sec.color};display:inline-block"></span>
+      ${escapeHtml(sec.name)} · 业务耗时分布（共 ${Utils.durationToHours(sec.units)}h）
+    </div>${rows}`;
+  dd.style.display = '';
+}
+
+// ============= Settings =============
+function renderSettings() {
+  const c = document.getElementById('section-list');
+  const sections = Store.getSections();
+  c.innerHTML = sections.map(s=>`
+    <div class="settings-section-item" style="background:${s.color}" onclick="editSection('${s.id}')">
+      <span>${escapeHtml(s.name)} <small style="opacity:0.7">(${s.businesses?s.businesses.length:0})</small></span>
+      <span class="del-x" onclick="event.stopPropagation();deleteSection('${s.id}')">×</span>
+    </div>`).join('') || '<p style="color:var(--text-secondary);font-size:14px">暂无板块</p>';
+}
+
+// Section modal with businesses
+function editSection(id) {
+  const s = Store.getSections().find(x=>x.id===id);
+  State.editingSectionId = id;
+  State.selectedColor = s.color;
+  State.editingBusinesses = JSON.parse(JSON.stringify(s.businesses||[]));
+  document.getElementById('section-name-input').value = s.name;
+  renderColorPicker();
+  renderBusinessEditList();
+  document.getElementById('modal-title').textContent = '编辑板块';
+  document.getElementById('modal').classList.remove('hidden');
+}
+function addSection() {
+  State.editingSectionId = null;
+  State.selectedColor = DEFAULT_COLORS[Store.getSections().length % DEFAULT_COLORS.length];
+  State.editingBusinesses = [{ id: Utils.uid(), name: '业务1' }];
+  document.getElementById('section-name-input').value = '';
+  renderColorPicker();
+  renderBusinessEditList();
+  document.getElementById('modal-title').textContent = '新建板块';
+  document.getElementById('modal').classList.remove('hidden');
+}
+function renderColorPicker() {
+  document.getElementById('color-picker').innerHTML = DEFAULT_COLORS.map(c=>`
+    <div class="color-dot ${c===State.selectedColor?'selected':''}" style="background:${c}" onclick="pickColor('${c}')"></div>`).join('');
+}
+function pickColor(c) { State.selectedColor=c; renderColorPicker(); }
+
+function renderBusinessEditList() {
+  document.getElementById('business-edit-list').innerHTML = State.editingBusinesses.map((b,i)=>`
+    <div class="business-edit-item">
+      <input type="text" value="${escapeHtml(b.name)}" placeholder="业务名称" oninput="State.editingBusinesses[${i}].name=this.value">
+      <button type="button" onclick="removeBusinessEdit(${i})">×</button>
+    </div>`).join('');
+}
+function addBusinessEdit() { State.editingBusinesses.push({id:Utils.uid(), name:''}); renderBusinessEditList(); }
+function removeBusinessEdit(i) { State.editingBusinesses.splice(i,1); renderBusinessEditList(); }
+
+function saveSectionModal() {
+  const name = document.getElementById('section-name-input').value.trim();
+  if (!name) { toast('请输入板块名称'); return; }
+  const biz = State.editingBusinesses.filter(b=>b.name.trim()).map(b=>({id:b.id, name:b.name.trim()}));
+  if (!biz.length) { toast('至少保留一个业务'); return; }
+  const sections = Store.getSections();
+  if (State.editingSectionId) {
+    const s = sections.find(x=>x.id===State.editingSectionId);
+    if (s) { s.name=name; s.color=State.selectedColor; s.businesses=biz; }
+  } else {
+    sections.push({ id:Utils.uid(), name, color:State.selectedColor, businesses:biz });
+  }
+  Store.saveSections(sections);
+  closeModal();
+  renderSettings();
+  toast('已保存');
+}
+function deleteSection(id) {
+  if (!confirm('确定删除该板块及其所有业务？关联记录将变为未分类。')) return;
+  Store.saveSections(Store.getSections().filter(s=>s.id!==id));
+  renderSettings();
+  toast('已删除');
+}
+function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+// ============= Log CRUD =============
+function editLog(id) { openForm(id); }
+function deleteLog(id) {
+  if (!confirm('确定删除这条记录？')) return;
+  Store.deleteLog(id);
+  toast('已删除');
+  if (State.currentView==='today') renderToday();
+  else if (State.currentView==='calendar') renderCalendar();
+  else if (State.currentView==='memo') renderMemo();
+}
+
+// ============= Export =============
+function exportCSV() {
+  const logs = Store.getLogs();
+  if (!logs.length) { toast('没有数据可导出'); return; }
+  const header = ['日期','计划时间','业务板块','业务','工作内容','耗时(小时)','类型','备忘'];
+  const rows = logs.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''))
+    .map(l=>[ l.date||'', BUCKET_LABELS[l.planBucket]||'', Utils.getSectionName(l.sectionId),
+      Utils.getBusinessName(l.sectionId,l.businessId), l.task, Utils.durationToHours(l.duration),
+      l.status==='plan'?'计划':'已完成', (l.notes||'').replace(/\n/g,' ') ]);
+  const csv = '\uFEFF' + [header,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  Utils.download(`工作日志_${Utils.todayStr()}.csv`, csv, 'text/csv;charset=utf-8;');
+  toast('已导出 CSV');
+}
+function exportJSON() {
+  try {
+    const data = { version:'2.0', exportDate:new Date().toISOString(), sections:Store.getSections(), logs:Store.getLogs() };
+    toast('已导出备份');
+    Utils.download(`worklog-backup-${Utils.todayStr()}.json`, JSON.stringify(data,null,2), 'application/json');
+  } catch(e) { toast('导出失败'); }
+}
+function importJSON(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.sections || !data.logs) throw new Error('格式错误');
+      if (confirm('导入将覆盖现有数据，确定继续？')) {
+        Store.saveSections(data.sections);
+        Store.saveLogs(data.logs);
+        toast('导入成功');
+        renderSettings();
+      }
+    } catch(err) { toast('导入失败：文件格式错误'); }
+  };
+  reader.readAsText(file);
+}
+
+// ============= Summary Export =============
+function openSummaryModal() {
+  State.summaryType = 'month';
+  document.querySelectorAll('#summary-modal .bucket-btn').forEach(b=>b.classList.toggle('active', b.dataset.summary==='month'));
+  document.getElementById('summary-period').value = Utils.todayStr().slice(0,7);
+  setSummaryType('month');
+  document.getElementById('summary-modal').classList.remove('hidden');
+}
+function closeSummaryModal() { document.getElementById('summary-modal').classList.add('hidden'); }
+function setSummaryType(type) {
+  State.summaryType = type;
+  document.querySelectorAll('#summary-modal .bucket-btn').forEach(b=>b.classList.toggle('active', b.dataset.summary===type));
+  const label = document.getElementById('summary-period-label');
+  const input = document.getElementById('summary-period');
+  if (type==='month') { label.textContent='选择月份'; input.type='month'; input.value=Utils.todayStr().slice(0,7); }
+  else if (type==='quarter') { label.textContent='选择季度起始月'; input.type='month'; input.value=Utils.todayStr().slice(0,7); }
+  else { label.textContent='选择年份'; input.type='number'; input.min=2000; input.max=2100; input.value=new Date().getFullYear(); }
+}
+
+function generateSummary() {
+  const type = State.summaryType;
+  const period = document.getElementById('summary-period').value;
+  let start, end, title;
+  const now = new Date();
+  if (type==='month') {
+    const [y,m] = period.split('-').map(Number);
+    start = new Date(y, m-1, 1);
+    end = new Date(y, m, 0);
+    title = `${y}年${m}月工作总结`;
+  } else if (type==='quarter') {
+    const [y,m] = period.split('-').map(Number);
+    const qStart = Math.floor((m-1)/3)*3 + 1;
+    start = new Date(y, qStart-1, 1);
+    end = new Date(y, qStart+2, 0);
+    const qn = Math.ceil(m/3);
+    title = `${y}年第${qn}季度工作总结`;
+  } else if (type==='half') {
+    const y = parseInt(period);
+    start = new Date(y, 0, 1);
+    end = new Date(y, 11, 31);
+    title = `${y}年度工作总结`;
+  } else { // year
+    const y = parseInt(period);
+    start = new Date(y, 0, 1);
+    end = new Date(y, 11, 31);
+    title = `${y}年度工作总结`;
+  }
+  if (type==='half') {
+    // Determine which half based on current month
+    const m = now.getMonth();
+    if (m < 6) { end = new Date(now.getFullYear(), 5, 30); title = `${now.getFullYear()}年上半年工作总结`; }
+    else { start = new Date(now.getFullYear(), 6, 1); end = new Date(now.getFullYear(), 11, 31); title = `${now.getFullYear()}年下半年工作总结`; }
+  }
+
+  const startStr = Utils.formatDateFull(start);
+  const endStr = Utils.formatDateFull(end);
+  const logs = Store.getLogs().filter(l => l.date && l.date>=startStr && l.date<=endStr);
+  const doneLogs = logs.filter(l=>l.status==='done');
+  const planLogs = logs.filter(l=>l.status==='plan');
+
+  // Aggregate by section -> business
+  const agg = {};
+  doneLogs.forEach(l=>{
+    if (!agg[l.sectionId]) agg[l.sectionId] = { businesses:{}, units:0, tasks:[] };
+    agg[l.sectionId].units += l.duration;
+    if (!agg[l.sectionId].businesses[l.businessId]) agg[l.sectionId].businesses[l.businessId] = { units:0, tasks:[] };
+    agg[l.sectionId].businesses[l.businessId].units += l.duration;
+    agg[l.sectionId].businesses[l.businessId].tasks.push(l.task);
+    agg[l.sectionId].tasks.push(l.task);
+  });
+
+  const totalUnits = doneLogs.reduce((s,l)=>s+l.duration,0);
+  const totalHours = Utils.durationToHours(totalUnits);
+  const totalTasks = doneLogs.length;
+
+  // ---- smart insights (rule-based narrative) ----
+  const sections = Store.getSections();
+  const secRows = sections.map(s=>{
+    const a = agg[s.id];
+    if (!a) return null;
+    return { id:s.id, name:s.name, color:s.color, units:a.units, businesses:Object.entries(a.businesses).map(([bid,b])=>({ name:Utils.getBusinessName(s.id,bid), units:b.units, tasks:b.tasks })).sort((x,y)=>y.units-x.units) };
+  }).filter(Boolean).sort((x,y)=>y.units-x.units);
+
+  // busiest day
+  const dayMap = {}; doneLogs.forEach(l=>{ dayMap[l.date]=(dayMap[l.date]||0)+l.duration; });
+  let busiestDay = '', busiestVal = 0;
+  Object.entries(dayMap).forEach(([d,u])=>{ if(u>busiestVal){ busiestVal=u; busiestDay=d; } });
+  const activeDays = Object.keys(dayMap).length;
+
+  const insights = [];
+  if (secRows.length) insights.push(`本周期投入最多的是「${secRows[0].name}」，共 ${Utils.durationToHours(secRows[0].units)} 小时，占总耗时 ${totalUnits?Math.round(secRows[0].units/totalUnits*100):0}%。`);
+  if (secRows[0] && secRows[0].businesses.length) insights.push(`其中「${secRows[0].businesses[0].name}」是耗时最多的业务（${Utils.durationToHours(secRows[0].businesses[0].units)} 小时）。`);
+  if (busiestDay) insights.push(`最忙碌的一天是 ${Utils.formatDate(busiestDay)}，当天投入 ${Utils.durationToHours(busiestVal)} 小时。`);
+  insights.push(`有效工作 ${activeDays} 天，日均 ${activeDays?Utils.durationToHours(Math.round(totalUnits/activeDays)):'0'} 小时，共完成 ${totalTasks} 项工作。`);
+  if (planLogs.length) insights.push(`另有 ${planLogs.length} 项计划待开展，建议关注计划落地情况。`);
+
+  const pendingTodos = [];
+  Store.getLogs().forEach(l=>{ (l.todos||[]).forEach(t=>{ if(!t.done) pendingTodos.push({text:t.text, section:Utils.getSectionName(l.sectionId), business:Utils.getBusinessName(l.sectionId,l.businessId)}); }); });
+
+  // ---- build self-contained HTML report (with SVG doughnut) ----
+  let paths='', accStart=0;
+  const cx=150, cy=100, rO=78, rI=50;
+  secRows.forEach(b=>{
+    const ang = totalUnits? b.units/totalUnits*360 : 0;
+    const accEnd = accStart+ang;
+    if (ang>0.2) paths += `<path d="${arcPath(cx,cy,rO,rI,accStart,accEnd)}" fill="${b.color}"></path>`;
+    accStart = accEnd;
+  });
+  let legend='';
+  secRows.forEach((b,i)=>{
+    const col=i%2, row=Math.floor(i/2);
+    const lx = col===0?12:158, ly=196+row*24;
+    legend += `<circle cx="${lx+6}" cy="${ly-4}" r="5" fill="${b.color}"/><text x="${lx+18}" y="${ly}" fill="#1a1a1a" font-size="12">${esc(b.name)} ${Utils.durationToHours(b.units)}h</text>`;
+  });
+
+  let sectionsHTML = '';
+  secRows.forEach(s=>{
+    sectionsHTML += `<h3 style="margin:18px 0 8px;font-size:15px;border-left:4px solid ${s.color};padding-left:8px">${esc(s.name)} · ${Utils.durationToHours(s.units)}h</h3>`;
+    s.businesses.forEach(b=>{
+      sectionsHTML += `<div style="margin:8px 0 8px 12px"><strong>▸ ${esc(b.name)}</strong> <span style="color:#8a8a8e;font-size:12px">（${Utils.durationToHours(b.units)}h）</span>`;
+      sectionsHTML += `<ul style="margin:6px 0 0 0;padding-left:20px;color:#444;font-size:13px;line-height:1.7">${b.tasks.map(t=>`<li>${esc(t)}</li>`).join('')}</ul></div>`;
+    });
+  });
+
+  const planHTML = planLogs.length ? planLogs.map(l=>
+    `<li>[${esc(Utils.getSectionName(l.sectionId))}/${esc(Utils.getBusinessName(l.sectionId,l.businessId))}] ${esc(l.task)}<span style="color:#ff9500;font-size:12px">（计划：${l.date?Utils.formatDate(l.date):'未定日期'}）</span></li>`
+  ).join('') : '<li style="color:#8a8a8e">无</li>';
+
+  const todoHTML = pendingTodos.length ? pendingTodos.map(t=>`<li>[${esc(t.section)}/${esc(t.business)}] ${esc(t.text)}</li>`).join('') : '<li style="color:#8a8a8e">无未完成待办</li>';
+
+  const reportHTML = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(title)}</title>
+<style>
+  body{font-family:-apple-system,"HarmonyOS Sans","PingFang SC","Microsoft YaHei",sans-serif;max-width:760px;margin:0 auto;padding:24px;color:#1a1a1a;background:#f5f6f8;line-height:1.6}
+  .card{background:#fff;border-radius:14px;padding:20px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+  h1{font-size:22px;margin:0 0 6px}
+  h2{font-size:17px;margin:22px 0 10px}
+  .sub{color:#8a8a8e;font-size:13px}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .stat{text-align:center;padding:12px;background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+  .stat .n{font-size:26px;font-weight:700;color:#cf0a2c}
+  .stat .l{font-size:12px;color:#8a8a8e;margin-top:2px}
+  .insight{background:#fff7f8;border:1px solid #ffd9df;border-radius:12px;padding:14px 18px}
+  .insight li{margin:6px 0}
+  ul{line-height:1.8}
+</style></head><body>
+<div class="card">
+  <h1>${esc(title)}</h1>
+  <div class="sub">周期：${startStr} 至 ${endStr} · 生成时间：${new Date().toLocaleString('zh-CN')}</div>
+</div>
+<div class="stats">
+  <div class="stat"><div class="n">${totalHours}</div><div class="l">总耗时(小时)</div></div>
+  <div class="stat"><div class="n">${totalTasks}</div><div class="l">已完成</div></div>
+  <div class="stat"><div class="n">${planLogs.length}</div><div class="l">计划中</div></div>
+</div>
+<div class="card">
+  <h2>📊 板块耗时分布</h2>
+  <svg viewBox="0 0 300 260" style="width:100%;max-width:340px;display:block;margin:0 auto">${paths}
+    <text x="${cx}" y="${cy-4}" text-anchor="middle" fill="#1a1a1a" font-size="26" font-weight="700">${totalHours}</text>
+    <text x="${cx}" y="${cy+16}" text-anchor="middle" fill="#8a8a8e" font-size="12">总耗时(小时)</text>${legend}
+  </svg>
+</div>
+<div class="card">
+  <h2>🤖 智能总结</h2>
+  <div class="insight"><ul>${insights.map(i=>`<li>${i}</li>`).join('')}</ul></div>
+</div>
+<div class="card">
+  <h2>📈 各板块 / 业务开展情况</h2>
+  ${sectionsHTML || '<p style="color:#8a8a8e">本周期暂无记录</p>'}
+</div>
+<div class="card">
+  <h2>🔭 后续计划</h2>
+  <ul>${planHTML}</ul>
+</div>
+<div class="card">
+  <h2>✅ 待办事项</h2>
+  <ul>${todoHTML}</ul>
+</div>
+<div class="sub" style="text-align:center;margin-top:8px">本总结由「工作日志」应用自动生成</div>
+</body></html>`;
+
+  const fname = `${title}_${Utils.todayStr()}.html`;
+  Utils.download(fname, reportHTML, 'text/html;charset=utf-8;');
+  window.__lastSummaryHTML = reportHTML;
+  closeSummaryModal();
+  toast('总结已生成(HTML)');
+}
+
+// ============= Events =============
+function bindEvents() {
+  document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>Views.show(b.dataset.view)));
+  document.getElementById('fab').addEventListener('click',()=>{
+    if (State.currentView==='calendar' && State.calSelectedDate) {
+      State.selectedDate = State.calSelectedDate;
+    }
+    openForm();
+  });
+  document.getElementById('back-btn').addEventListener('click',()=>Views.show('today'));
+  document.getElementById('header-action').addEventListener('click',()=>{
+    State.searchMode = !State.searchMode;
+    document.getElementById('today-search-bar').style.display = State.searchMode ? '' : 'none';
+    document.getElementById('today-date-bar').style.display = State.searchMode ? 'none' : '';
+    if (!State.searchMode) document.getElementById('history-search').value='';
+    renderToday();
+  });
+
+  // Date nav
+  document.getElementById('prev-day').addEventListener('click',()=>{ State.selectedDate=Utils.addDays(State.selectedDate,-1); renderToday(); });
+  document.getElementById('next-day').addEventListener('click',()=>{ State.selectedDate=Utils.addDays(State.selectedDate,1); renderToday(); });
+  document.getElementById('today-btn').addEventListener('click',()=>{ State.selectedDate=Utils.todayStr(); renderToday(); });
+  document.getElementById('selected-date').addEventListener('change',e=>{ State.selectedDate=e.target.value; renderToday(); });
+
+  // Duration
+  document.getElementById('dur-dec').addEventListener('click',()=>{ const i=document.getElementById('log-duration'); i.value=Math.max(1,parseInt(i.value)-1); updateDurationHint(); });
+  document.getElementById('dur-inc').addEventListener('click',()=>{ const i=document.getElementById('log-duration'); i.value=Math.min(48,parseInt(i.value)+1); updateDurationHint(); });
+  document.getElementById('log-duration').addEventListener('input',updateDurationHint);
+  document.querySelectorAll('.dur-presets button').forEach(b=>b.addEventListener('click',()=>{ document.getElementById('log-duration').value=b.dataset.val; updateDurationHint(); }));
+
+  // Form submit
+  document.getElementById('log-form').addEventListener('submit',e=>{
+    e.preventDefault();
+    const id = document.getElementById('log-id').value;
+    const data = {
+      date: document.getElementById('log-date').value || null,
+      planBucket: null,
+      sectionId: State.selectedSectionId,
+      businessId: State.selectedBusinessId,
+      task: document.getElementById('log-task').value.trim(),
+      duration: parseInt(document.getElementById('log-duration').value)||1,
+      notes: document.getElementById('log-notes').value.trim(),
+      status: State.formStatus,
+      todos: State.formTodos.filter(t=>t.text.trim()).map(t=>({text:t.text.trim(), done:t.done}))
+    };
+    if (!data.sectionId) { toast('请选择业务板块'); return; }
+    if (!data.businessId) { toast('请选择业务'); return; }
+    if (!data.task) { toast('请填写工作内容'); return; }
+    if (!data.date) { toast('请选择日期'); return; }
+    if (id) { Store.updateLog(id, data); toast('已更新'); }
+    else { Store.addLog({...data, id:Utils.uid(), createdAt:Date.now()}); toast('已保存'); }
+    if (data.date) State.selectedDate = data.date;
+    Views.show(State.currentView==='calendar'?'calendar':'today');
+  });
+  document.getElementById('cancel-btn').addEventListener('click',()=>Views.show(State.currentView==='calendar'?'calendar':'today'));
+
+  // Stats tabs
+  document.querySelectorAll('.stats-tabs .tab').forEach(t=>t.addEventListener('click',()=>{
+    document.querySelectorAll('.stats-tabs .tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    State.statsRange=t.dataset.range;
+    renderStats();
+  }));
+
+  // History search
+  document.getElementById('history-search').addEventListener('input',renderHistoryList);
+
+  // Calendar nav
+  document.getElementById('cal-prev').addEventListener('click',()=>{
+    State.calMonth--;
+    if (State.calMonth<0) { State.calMonth=11; State.calYear--; }
+    renderCalendar();
+  });
+  document.getElementById('cal-next').addEventListener('click',()=>{
+    State.calMonth++;
+    if (State.calMonth>11) { State.calMonth=0; State.calYear++; }
+    renderCalendar();
+  });
+
+  // Settings
+  document.getElementById('add-section-btn').addEventListener('click',addSection);
+  document.getElementById('modal-cancel').addEventListener('click',closeModal);
+  document.getElementById('modal-save').addEventListener('click',saveSectionModal);
+  document.querySelector('#modal .modal-backdrop').addEventListener('click',closeModal);
+  document.getElementById('export-csv-btn').addEventListener('click',exportCSV);
+  document.getElementById('export-json-btn').addEventListener('click',exportJSON);
+  document.getElementById('summary-btn').addEventListener('click',openSummaryModal);
+  document.getElementById('import-json-btn').addEventListener('click',()=>document.getElementById('import-file').click());
+  document.getElementById('import-file').addEventListener('change',e=>{ if(e.target.files[0]) importJSON(e.target.files[0]); e.target.value=''; });
+  document.getElementById('clear-data-btn').addEventListener('click',()=>{
+    if (confirm('确定清空所有数据？此操作不可恢复！')) {
+      Store.clearAll();
+      toast('已清空');
+      State.selectedDate=Utils.todayStr();
+      renderSettings();
+    }
+  });
+
+  // Summary modal backdrop
+  document.querySelector('#summary-modal .modal-backdrop').addEventListener('click',closeSummaryModal);
+}
+
+// ============= Init =============
+function init() {
+  bindEvents();
+  Views.show('today');
+  /* offline single-file build: no service worker */
+}
+
+// Expose
+window.selectSection=selectSection;
+window.selectBusiness=selectBusiness;
+window.setStatus=setStatus;
+window.addTodoItem=addTodoItem;
+window.removeTodoItem=removeTodoItem;
+window.drillSection=drillSection;
+window.editLog=editLog;
+window.deleteLog=deleteLog;
+window.toggleTodo=toggleTodo;
+window.editSection=editSection;
+window.deleteSection=deleteSection;
+window.pickColor=pickColor;
+window.addBusinessEdit=addBusinessEdit;
+window.removeBusinessEdit=removeBusinessEdit;
+window.togglePending=togglePending;
+window.selectCalDate=selectCalDate;
+window.selectMemoSection=selectMemoSection;
+window.selectMemoBusiness=selectMemoBusiness;
+window.setSummaryType=setSummaryType;
+window.generateSummary=generateSummary;
+window.closeSummaryModal=closeSummaryModal;
+
+document.addEventListener('DOMContentLoaded', init);
+
+</script>
+</body>
+</html>
