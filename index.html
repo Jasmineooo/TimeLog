@@ -1723,7 +1723,7 @@ body {
         </div>
 
         <div class="settings-group">
-          <h3 class="group-title">数据导入/导出</h3>
+          <h3 class="group-title">数据导出</h3>
           <button id="export-json-btn" class="btn btn-outline full">导出 JSON 完整备份</button>
           <button id="import-json-btn" class="btn btn-outline full">导入 JSON 备份</button>
           <input type="file" id="import-file" accept=".json,application/json" hidden>
@@ -1740,7 +1740,7 @@ body {
         <div class="settings-group">
           <div class="about-info">
             <p>工作日志 v2.0.0</p>
-            <p class="about-sub">离线可用</p>
+            <p class="about-sub">专为华为手机优化 · 离线可用</p>
           </div>
         </div>
       </section>
@@ -1906,18 +1906,30 @@ const Store = {
 // ============= Utils =============
 const Utils = {
   uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); },
-  todayStr() { return new Date().toISOString().slice(0, 10); },
+  // 用本地时区生成今天的日期字符串，避免 toISOString() 的 UTC 跨日偏差
+  todayStr() {
+    const d = new Date();
+    return this.formatDateFull(d);
+  },
+  // 将 "YYYY-MM-DD" 解析为本地日期（而不是 UTC 午夜），防止跨时区偏一天
+  parseLocalDate(str) {
+    if (str instanceof Date) return str;
+    if (!str) return null;
+    const m = String(str).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) return new Date(+m[1], +m[2]-1, +m[3]);
+    return new Date(str);
+  },
   formatDate(dateStr) {
     if (!dateStr) return '';
-    const d = new Date(dateStr);
+    const d = this.parseLocalDate(dateStr);
     const wd = ['周日','周一','周二','周三','周四','周五','周六'][d.getDay()];
     return `${d.getMonth()+1}月${d.getDate()}日 ${wd}`;
   },
   formatDateFull(d) {
-    d = (d instanceof Date) ? d : new Date(d);
+    d = (d instanceof Date) ? d : this.parseLocalDate(d);
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   },
-  addDays(dateStr, days) { const d = new Date(dateStr); d.setDate(d.getDate()+days); return this.formatDateFull(d); },
+  addDays(dateStr, days) { const d = this.parseLocalDate(dateStr); d.setDate(d.getDate()+days); return this.formatDateFull(d); },
   durationToHours(h) { return (h*0.5).toFixed(1).replace(/\.0$/,''); },
   getSection(id) { return this.getSections().find(s => s.id === id); },
   getSectionName(id) { const s = Store.getSections().find(x=>x.id===id); return s?s.name:'未分类'; },
@@ -2394,7 +2406,7 @@ function renderStats() {
   else if (State.statsRange==='month') rangeStart=new Date(now.getFullYear(),now.getMonth(),1);
   else rangeStart=new Date(0);
   rangeStart.setHours(0,0,0,0);
-  const filtered = logs.filter(l=>new Date(l.date)>=rangeStart);
+  const filtered = logs.filter(l=>Utils.parseLocalDate(l.date)>=rangeStart);
 
   const totalUnits = filtered.reduce((s,l)=>s+l.duration,0);
   const days = new Set(filtered.map(l=>l.date));
