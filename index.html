@@ -2502,7 +2502,7 @@ function renderCharts(logs, breakdown, rangeStart) {
   }
 
   // ---- Daily bar ----
-const days=[]; const cursor=new Date(rangeStart);
+  const days=[]; const cursor=new Date(rangeStart);
   while (cursor<=rangeEnd) { days.push(Utils.formatDateFull(cursor)); cursor.setDate(cursor.getDate()+1); }
   // 全部范围过大时只展示最近 120 天，避免柱子过密
   const displayDays = days.length>120 ? days.slice(-120) : days;
