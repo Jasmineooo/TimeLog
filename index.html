@@ -2401,11 +2401,22 @@ function selectMemoBusiness(id) { State.memoBusinessId = id; renderMemo(); }
 function renderStats() {
   const logs = Store.getLogs().filter(l=>l.status==='done' && l.date);
   const now = new Date();
-  let rangeStart;
-  if (State.statsRange==='week') { const d=now.getDay()||7; rangeStart=new Date(now); rangeStart.setDate(now.getDate()-d+1); }
-  else if (State.statsRange==='month') rangeStart=new Date(now.getFullYear(),now.getMonth(),1);
-  else rangeStart=new Date(0);
+  let rangeStart, rangeEnd;
+  if (State.statsRange==='week') {
+    const d = now.getDay()||7;
+    rangeStart = new Date(now); rangeStart.setDate(now.getDate()-d+1);
+    rangeEnd = new Date(rangeStart); rangeEnd.setDate(rangeStart.getDate()+6);
+  } else if (State.statsRange==='month') {
+    rangeStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    rangeEnd = new Date(now.getFullYear(), now.getMonth()+1, 0);
+  } else {
+    // 全部：从最早一条记录所在日期到今天
+    const dates = logs.map(l=>l.date).filter(Boolean).sort();
+    rangeStart = dates.length ? Utils.parseLocalDate(dates[0]) : new Date(now);
+    rangeEnd = new Date(now);
+  }
   rangeStart.setHours(0,0,0,0);
+  rangeEnd.setHours(0,0,0,0);
   const filtered = logs.filter(l=>Utils.parseLocalDate(l.date)>=rangeStart);
 
   const totalUnits = filtered.reduce((s,l)=>s+l.duration,0);
@@ -2451,7 +2462,7 @@ function renderStats() {
         </div>`).join('')}</div>`;
     }).join('');
   }
-  renderCharts(filtered, breakdown, rangeStart);
+  renderCharts(filtered, breakdown, rangeStart, rangeEnd);
   // reset drilldown when stats re-rendered
   const dd = document.getElementById('chart-drilldown');
   if (dd) dd.style.display = 'none';
@@ -2470,7 +2481,7 @@ function arcPath(cx,cy,rO,rI,startAngle,endAngle) {
 }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-function renderCharts(logs, breakdown, rangeStart) {
+function renderCharts(logs, breakdown, rangeStart, rangeEnd) {
   const svgEl = document.getElementById('chart-section');
   const totalUnits = breakdown.reduce((s,b)=>s+b.units,0);
 
