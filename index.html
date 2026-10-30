@@ -2045,7 +2045,8 @@ function renderToday() {
   const allLogs = Store.getLogs();
   const dayLogs = allLogs.filter(l => l.date === State.selectedDate);
   const todayStr = Utils.todayStr();
-  const pending = sortPlans(allLogs.filter(l => l.status === 'plan' && (!l.date || l.date > todayStr)));
+  const pending = allLogs.filter(l => l.status === 'plan' && (!l.date || l.date > todayStr))
+    .sort((a,b)=>(a.date||'9999-99-99').localeCompare(b.date||'9999-99-99') || (a.createdAt||0)-(b.createdAt||0));
 
   // Future plans section
   const pendingEl = document.getElementById('pending-plans');
@@ -2082,7 +2083,7 @@ function renderToday() {
   let html = '';
   if (plans.length) {
     html += '<div class="history-group-title" style="margin-top:4px">计划</div>';
-    html += plans.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)).map(l=>logCardHTML(l,true)).join('');
+    html += sortPlans(plans).map(l=>logCardHTML(l,true,true)).join('');
   }
   if (done.length) {
     html += '<div class="history-group-title" style="margin-top:12px">已完成</div>';
@@ -2108,8 +2109,7 @@ function sortPlans(list) {
 
 function compactLogCard(l) {
   const color = Utils.getSectionColor(l.sectionId);
-  return `<div class="log-card is-plan plan-drag-item" data-id="${l.id}" style="border-left-color:${color};padding:10px 14px 10px 40px;margin-bottom:8px">
-    <span class="drag-handle" title="按住拖动排序">⠿</span>
+  return `<div class="log-card is-plan" style="border-left-color:${color};padding:10px 14px;margin-bottom:8px">
     <div class="log-header">
       <div class="log-task" style="font-size:14px">${escapeHtml(l.task)}</div>
     </div>
@@ -2124,7 +2124,7 @@ function compactLogCard(l) {
   </div>`;
 }
 
-function logCardHTML(log, showActions) {
+function logCardHTML(log, showActions, draggable) {
   const color = Utils.getSectionColor(log.sectionId);
   const isPlan = log.status === 'plan';
   const notes = log.notes ? `<div class="log-notes">${escapeHtml(log.notes)}</div>` : '';
@@ -2135,7 +2135,12 @@ function logCardHTML(log, showActions) {
   </div>` : '';
   const badge = isPlan ? '<span class="plan-badge">计划</span>' : '';
   const bucketTag = (isPlan && log.planBucket) ? `<span class="plan-bucket-tag">${BUCKET_LABELS[log.planBucket]}</span>` : '';
-  return `<div class="log-card ${isPlan?'is-plan':''}" style="border-left-color:${color}">
+  const dragCls = draggable ? ' plan-drag-item' : '';
+  const dragAttr = draggable ? ` data-id="${log.id}"` : '';
+  const dragPad = draggable ? ';padding-left:40px' : '';
+  const dragHandle = draggable ? `<span class="drag-handle" title="按住拖动排序">⠿</span>` : '';
+  return `<div class="log-card ${isPlan?'is-plan':''}${dragCls}"${dragAttr} style="border-left-color:${color}${dragPad}">
+    ${dragHandle}
     <div class="log-header">
       <div class="log-task">${badge}${escapeHtml(log.task)}</div>
       <div class="log-duration">${Utils.durationToHours(log.duration)}h</div>
@@ -2481,11 +2486,14 @@ function renderStats() {
   const filtered = logs.filter(l=>Utils.parseLocalDate(l.date)>=rangeStart);
 
   const totalUnits = filtered.reduce((s,l)=>s+l.duration,0);
-  const days = new Set(filtered.map(l=>l.date));
+  // 当日耗时合计为 0 的日子不计入活跃天数
+  const dayTotals = {};
+  filtered.forEach(l=>{ dayTotals[l.date] = (dayTotals[l.date]||0) + l.duration; });
+  const activeDays = Object.keys(dayTotals).filter(d=>dayTotals[d] > 0).length;
   document.getElementById('stat-total-hours').textContent = Utils.durationToHours(totalUnits);
   document.getElementById('stat-total-tasks').textContent = filtered.length;
-  document.getElementById('stat-active-days').textContent = days.size;
-  document.getElementById('stat-avg-daily').textContent = days.size?Utils.durationToHours(Math.round(totalUnits/days.size)):'0';
+  document.getElementById('stat-active-days').textContent = activeDays;
+  document.getElementById('stat-avg-daily').textContent = activeDays?Utils.durationToHours(Math.round(totalUnits/activeDays)):'0';
 
   // Section + business breakdown
   const sectionMap = {};
@@ -2995,9 +3003,9 @@ function bindEvents() {
   // 未来日期只能记为计划
   document.getElementById('log-date').addEventListener('change', syncStatusByDate);
 
-  // 未来计划：拖动排序（手柄 ⠿，鼠标与触屏通用）
+  // 当日「计划」：拖动排序（手柄 ⠿，鼠标与触屏通用）
   (function(){
-    const body = document.getElementById('pending-body');
+    const body = document.getElementById('log-list');
     if (!body) return;
     let ctx = null;
     body.addEventListener('pointerdown', e=>{
