@@ -1131,15 +1131,31 @@ body {
 }
 
 /* 计划拖拽排序 */
-.plan-drag-item { position: relative; }
-.plan-drag-item.dragging { opacity: .45; box-shadow: 0 6px 18px rgba(0,0,0,.15); }
-.drag-handle {
-  position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
-  font-size: 16px; line-height: 1; color: #c7c7cc;
-  cursor: grab; user-select: none; -webkit-user-select: none;
-  touch-action: none; padding: 8px 6px;
+.plan-drag-item {
+  position: relative;
 }
-.seg-btn:disabled { opacity: .35; cursor: not-allowed; }
+.plan-drag-item.dragging {
+  opacity: 0.45;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+}
+.drag-handle {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  line-height: 1;
+  color: #c7c7cc;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  padding: 8px 6px;
+}
+.seg-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
 
 /* Calendar */
 .cal-nav {
@@ -1608,6 +1624,7 @@ body {
             </div>
             <div class="duration-hint" id="duration-hint">1.0 小时</div>
             <div class="dur-presets">
+              <button type="button" data-val="0">0h</button>
               <button type="button" data-val="1">0.5h</button>
               <button type="button" data-val="2">1h</button>
               <button type="button" data-val="4">2h</button>
@@ -2083,17 +2100,16 @@ function sortPlans(list) {
   return list.slice().sort((a,b)=>{
     const oa = a.sortOrder, ob = b.sortOrder;
     if (oa !== undefined && ob !== undefined) return oa - ob;
-    if (oa !== undefined) return -1;   // 手动排序过的排前面
+    if (oa !== undefined) return -1;   // 手动拖动过的排前面
     if (ob !== undefined) return 1;
     return (a.date||'9999-99-99').localeCompare(b.date||'9999-99-99') || (a.createdAt||0)-(b.createdAt||0);
   });
 }
-    
+
 function compactLogCard(l) {
   const color = Utils.getSectionColor(l.sectionId);
-  return `<div class="log-card is-plan plan-drag-item" data-id="${l.id}"
-     style="border-left-color:${color};padding:10px 14px 10px 40px;margin-bottom:8px">
-   <span class="drag-handle" title="按住拖动排序">⠿</span>
+  return `<div class="log-card is-plan plan-drag-item" data-id="${l.id}" style="border-left-color:${color};padding:10px 14px 10px 40px;margin-bottom:8px">
+    <span class="drag-handle" title="按住拖动排序">⠿</span>
     <div class="log-header">
       <div class="log-task" style="font-size:14px">${escapeHtml(l.task)}</div>
     </div>
@@ -2268,12 +2284,14 @@ function updateStatusUI() {
   document.getElementById('date-group').style.display = '';
 }
 
+// 第二天及以后的日期只能记录为「计划」
 function syncStatusByDate() {
-  const date = document.getElementById('log-date').value;
-  const today = Utils.todayStr();
-  const isFuture = !!date && date > today;  // 第二天及以后
+  const dateInput = document.getElementById('log-date');
   const doneBtn = document.querySelector('.seg-btn[data-status="done"]');
-  if (!doneBtn) return;
+  if (!dateInput || !doneBtn) return;
+  const date = dateInput.value;
+  const today = Utils.todayStr();
+  const isFuture = !!date && date > today;
   if (isFuture) {
     if (State.formStatus === 'done') { State.formStatus = 'plan'; updateStatusUI(); }
     doneBtn.disabled = true;
@@ -2283,7 +2301,7 @@ function syncStatusByDate() {
     doneBtn.title = '';
   }
 }
-    
+
 function addTodoItem() {
   State.formTodos.push({ text: '', done: false });
   renderTodoEditList();
@@ -2393,25 +2411,18 @@ function renderMemo() {
   const s = sections.find(x=>x.id===State.memoSectionId);
   bg.style.display = '';
   const bs = s.businesses || [];
-   document.getElementById('memo-business-selector').innerHTML =
-   `<button type="button" class="business-chip ${!State.memoBusinessId?'active':''}"
-           onclick="selectMemoBusiness(null)">全部</button>` +
-   bs.map(b=>`
-     <button type="button" class="business-chip ${b.id===State.memoBusinessId?'active':''}"
-            onclick="selectMemoBusiness('${b.id}')">${escapeHtml(b.name)}</button>`).join('');
+  document.getElementById('memo-business-selector').innerHTML =
+    `<button type="button" class="business-chip ${!State.memoBusinessId?'active':''}"
+             onclick="selectMemoBusiness(null)">全部</button>` +
+    bs.map(b=>`
+      <button type="button" class="business-chip ${b.id===State.memoBusinessId?'active':''}"
+              onclick="selectMemoBusiness('${b.id}')">${escapeHtml(b.name)}</button>`).join('');
 
-  //if (!State.memoBusinessId) {
-  //  content.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>选择一个业务查看详情</p></div>`;
-  //  return;
-  //}
-
-  //const logs = Store.getLogs().filter(l=>l.sectionId===State.memoSectionId && l.businessId===State.memoBusinessId)
-  //  .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   const bizId = State.memoBusinessId;   // null = 整个板块
   const logs = Store.getLogs()
-   .filter(l => l.sectionId === State.memoSectionId && (!bizId || l.businessId === bizId))
-   .sort((a,b) => (a.date||'9999-99-99').localeCompare(b.date||'9999-99-99')
-              || (a.createdAt||0)-(b.createdAt||0));
+    .filter(l => l.sectionId === State.memoSectionId && (!bizId || l.businessId === bizId))
+    .sort((a,b) => (a.date||'9999-99-99').localeCompare(b.date||'9999-99-99')
+                || (a.createdAt||0)-(b.createdAt||0));
 
   const allTodos = logs.flatMap(l=>(l.todos||[]).map(t=>({...t, logId:l.id, logDate:l.date})));
   const doneTodos = allTodos.filter(t=>t.done).length;
@@ -2422,7 +2433,7 @@ function renderMemo() {
       <div class="memo-summary-item"><div class="memo-summary-num">${allTodos.length}</div><div class="memo-summary-label">待办总数</div></div>
       <div class="memo-summary-item"><div class="memo-summary-num">${doneTodos}</div><div class="memo-summary-label">已完成</div></div>
     </div>
-    ${logs.length ? logs.map(l=>memoLogCard(l)).join('') : '<div class="empty-state"><div class="empty-icon">📭</div><p>${bizId?'该业务':'该板块'}暂无记录</p></div>'}
+    ${logs.length ? logs.map(l=>memoLogCard(l)).join('') : `<div class="empty-state"><div class="empty-icon">📭</div><p>${bizId?'该业务':'该板块'}暂无记录</p></div>`}
   `;
 }
 
@@ -2980,8 +2991,11 @@ function bindEvents() {
   document.getElementById('next-day').addEventListener('click',()=>{ State.selectedDate=Utils.addDays(State.selectedDate,1); renderToday(); });
   document.getElementById('today-btn').addEventListener('click',()=>{ State.selectedDate=Utils.todayStr(); renderToday(); });
   document.getElementById('selected-date').addEventListener('change',e=>{ State.selectedDate=e.target.value; renderToday(); });
+
+  // 未来日期只能记为计划
   document.getElementById('log-date').addEventListener('change', syncStatusByDate);
-    // 未来计划：拖动排序（手柄 ⠿，鼠标/触屏都支持）
+
+  // 未来计划：拖动排序（手柄 ⠿，鼠标与触屏通用）
   (function(){
     const body = document.getElementById('pending-body');
     if (!body) return;
@@ -2994,7 +3008,7 @@ function bindEvents() {
       e.preventDefault();
       ctx = { item, startY: e.clientY, moved: false };
       item.classList.add('dragging');
-      handle.setPointerCapture(e.pointerId);
+      try { handle.setPointerCapture(e.pointerId); } catch(_) {}
     });
     body.addEventListener('pointermove', e=>{
       if (!ctx) return;
@@ -3021,7 +3035,7 @@ function bindEvents() {
     body.addEventListener('pointerup', finish);
     body.addEventListener('pointercancel', finish);
   })();
-  
+
   // Duration
   document.getElementById('dur-dec').addEventListener('click',()=>{ const i=document.getElementById('log-duration'); i.value=Math.max(0,parseInt(i.value)-1); updateDurationHint(); });
   document.getElementById('dur-inc').addEventListener('click',()=>{ const i=document.getElementById('log-duration'); i.value=Math.min(48,parseInt(i.value)+1); updateDurationHint(); });
@@ -3047,7 +3061,7 @@ function bindEvents() {
     if (!data.businessId) { toast('请选择业务'); return; }
     if (!data.task) { toast('请填写工作内容'); return; }
     if (!data.date) { toast('请选择日期'); return; }
-    if (data.date && data.date > Utils.todayStr()) data.status = 'plan';
+    if (data.date > Utils.todayStr()) data.status = 'plan';   // 兜底：未来日期只能是计划
     if (id) { Store.updateLog(id, data); toast('已更新'); }
     else { Store.addLog({...data, id:Utils.uid(), createdAt:Date.now()}); toast('已保存'); }
     if (data.date) State.selectedDate = data.date;
