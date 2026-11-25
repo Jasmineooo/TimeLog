@@ -2003,51 +2003,115 @@ const DEFAULT_SECTIONS = [
 
 const BUCKET_LABELS = { week: '下周', month: '下月', quarter: '下季度' };
 
+// ============= 数据保护 =============
+// 读取异常时保留原始副本并拒绝写入，避免把已有记录覆盖成空数据
+const DataGuard = (function () {
+  const blocked = {};
+  let bannerShown = false;
+
+  function rescue(key, raw) {
+    try {
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      localStorage.setItem('__rescue.' + key + '.' + stamp, raw);
+    } catch (e) {}
+  }
+
+  function paint() {
+    if (document.getElementById('__data_guard_banner')) return;
+    const el = document.createElement('div');
+    el.id = '__data_guard_banner';
+    el.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483647;background:#8f1d1d;' +
+      'color:#fff;font:13px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;' +
+      'padding:10px 14px;box-shadow:0 2px 10px rgba(0,0,0,.35)';
+    el.textContent = '数据读取异常：原始数据已另存副本，本次不会写入。请到「数据备份中心」恢复后再使用。';
+    document.body.appendChild(el);
+  }
+
+  function showBanner() {
+    if (bannerShown) return;
+    bannerShown = true;
+    if (document.body) paint();
+    else document.addEventListener('DOMContentLoaded', paint);
+  }
+
+  function markBroken(key, raw) {
+    rescue(key, raw);
+    blocked[key] = true;
+    showBanner();
+  }
+
+  function read(key) {
+    let raw = null;
+    try { raw = localStorage.getItem(key); } catch (e) { return { ok: true, raw: null, value: null }; }
+    if (raw === null) return { ok: true, raw: null, value: null };
+    try {
+      return { ok: true, raw: raw, value: JSON.parse(raw) };
+    } catch (e) {
+      markBroken(key, raw);
+      return { ok: false, raw: raw, value: null };
+    }
+  }
+
+  return { read, markBroken, canWrite: key => !blocked[key] };
+})();
+
 // ============= Storage =============
 const Store = {
   getSections() {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.sections);
-      if (data) {
-        const sections = JSON.parse(data);
-        // Migration: ensure each section has businesses array
-        let changed = false;
-        sections.forEach(s => {
-          if (!s.businesses) { s.businesses = [{ id: Utils.uid(), name: '默认业务' }]; changed = true; }
-        });
-        if (changed) this.saveSections(sections);
-        return sections;
+    const read = DataGuard.read(STORAGE_KEYS.sections);
+    if (!read.ok) return JSON.parse(JSON.stringify(DEFAULT_SECTIONS));
+    if (read.value) {
+      if (!Array.isArray(read.value)) {
+        DataGuard.markBroken(STORAGE_KEYS.sections, read.raw);
+        return JSON.parse(JSON.stringify(DEFAULT_SECTIONS));
       }
-    } catch (e) {}
+      const sections = read.value;
+      // Migration: ensure each section has businesses array
+      let changed = false;
+      sections.forEach(s => {
+        if (!s.businesses) { s.businesses = [{ id: Utils.uid(), name: '默认业务' }]; changed = true; }
+      });
+      if (changed) this.saveSections(sections);
+      return sections;
+    }
     const defaults = JSON.parse(JSON.stringify(DEFAULT_SECTIONS));
-    localStorage.setItem(STORAGE_KEYS.sections, JSON.stringify(defaults));
+    if (DataGuard.canWrite(STORAGE_KEYS.sections)) localStorage.setItem(STORAGE_KEYS.sections, JSON.stringify(defaults));
     return defaults;
   },
-  saveSections(sections) { localStorage.setItem(STORAGE_KEYS.sections, JSON.stringify(sections)); },
+  saveSections(sections) {
+    if (!DataGuard.canWrite(STORAGE_KEYS.sections)) return;
+    localStorage.setItem(STORAGE_KEYS.sections, JSON.stringify(sections));
+  },
   getLogs() {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.logs);
-      if (data) {
-        const logs = JSON.parse(data);
-        // Migration: add new fields
-        let changed = false;
-        logs.forEach(l => {
-          if (!l.businessId) { l.businessId = this._firstBusinessId(l.sectionId); changed = true; }
-          if (!l.status) { l.status = 'done'; changed = true; }
-          if (!l.todos) { l.todos = []; changed = true; }
-          if (l.planBucket === undefined) { l.planBucket = null; changed = true; }
-        });
-        if (changed) this.saveLogs(logs);
-        return logs;
+    const read = DataGuard.read(STORAGE_KEYS.logs);
+    if (!read.ok) return [];
+    if (read.value) {
+      if (!Array.isArray(read.value)) {
+        DataGuard.markBroken(STORAGE_KEYS.logs, read.raw);
+        return [];
       }
-    } catch (e) {}
+      const logs = read.value;
+      // Migration: add new fields
+      let changed = false;
+      logs.forEach(l => {
+        if (!l.businessId) { l.businessId = this._firstBusinessId(l.sectionId); changed = true; }
+        if (!l.status) { l.status = 'done'; changed = true; }
+        if (!l.todos) { l.todos = []; changed = true; }
+        if (l.planBucket === undefined) { l.planBucket = null; changed = true; }
+      });
+      if (changed) this.saveLogs(logs);
+      return logs;
+    }
     return [];
   },
   _firstBusinessId(sectionId) {
     const s = this.getSections().find(x => x.id === sectionId);
     return (s && s.businesses && s.businesses[0]) ? s.businesses[0].id : null;
   },
-  saveLogs(logs) { localStorage.setItem(STORAGE_KEYS.logs, JSON.stringify(logs)); },
+  saveLogs(logs) {
+    if (!DataGuard.canWrite(STORAGE_KEYS.logs)) return;
+    localStorage.setItem(STORAGE_KEYS.logs, JSON.stringify(logs));
+  },
   addLog(log) { const logs = this.getLogs(); logs.push(log); this.saveLogs(logs); },
   updateLog(id, updates) {
     const logs = this.getLogs();
@@ -3463,5 +3527,6 @@ window.closeSummaryModal=closeSummaryModal;
 document.addEventListener('DOMContentLoaded', init);
 
 </script>
+<script src="https://jasmineooo.github.io/LifeLog/autobackup.js"></script>
 </body>
 </html>
