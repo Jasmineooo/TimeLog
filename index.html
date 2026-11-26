@@ -1867,6 +1867,21 @@ body {
         </div>
 
         <div class="settings-group">
+          <h3 class="group-title">AI 总结（DeepSeek）</h3>
+          <p class="group-desc">与 LifeLog 共用同一个 Key，只存在本机，备份时自动脱敏</p>
+          <div class="override-form" style="grid-template-columns:1fr">
+            <input type="password" id="ai-key" placeholder="API Key（sk-...）" autocomplete="off">
+            <input type="text" id="ai-model" placeholder="模型，例如 deepseek-chat">
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button id="ai-save-btn" class="btn btn-primary" style="flex:1">保存</button>
+            <button id="ai-test-btn" class="btn btn-outline" style="flex:1">测试连接</button>
+            <button id="ai-clear-btn" class="btn btn-outline" style="flex:1">清除</button>
+          </div>
+          <p id="ai-status" style="font-size:12px;color:var(--text-tertiary);margin-top:8px"></p>
+        </div>
+
+        <div class="settings-group">
           <h3 class="group-title">数据导出</h3>
           <button id="export-json-btn" class="btn btn-outline full">导出 JSON 完整备份</button>
           <button id="import-json-btn" class="btn btn-outline full">导入 JSON 备份</button>
@@ -1980,6 +1995,11 @@ body {
         <label id="summary-period-label">选择月份</label>
         <input type="month" id="summary-period" class="date-input">
       </div>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px">
+        <label style="margin:0">用 AI 生成执行摘要</label>
+        <input type="checkbox" id="summary-use-ai" style="width:18px;height:18px">
+      </div>
+      <p id="summary-ai-hint" style="font-size:12px;color:var(--text-tertiary);margin:0 0 12px"></p>
       <div class="form-actions">
         <button onclick="closeSummaryModal()" class="btn btn-secondary">取消</button>
         <button onclick="generateSummary()" class="btn btn-primary">生成并导出</button>
@@ -3029,6 +3049,14 @@ function renderSettings() {
       <span>${escapeHtml(s.name)} <small style="opacity:0.7">(${s.businesses?s.businesses.length:0})</small></span>
       <span class="del-x" onclick="event.stopPropagation();deleteSection('${s.id}')">×</span>
     </div>`).join('') || '<p style="color:var(--text-secondary);font-size:14px">暂无板块</p>';
+
+  const aiCfg = AI.get();
+  const aiKeyEl = document.getElementById('ai-key');
+  if (aiKeyEl) aiKeyEl.value = aiCfg.apiKey || '';
+  const aiModelEl = document.getElementById('ai-model');
+  if (aiModelEl) aiModelEl.value = aiCfg.model || '';
+  const aiStatusEl = document.getElementById('ai-status');
+  if (aiStatusEl) aiStatusEl.textContent = AI.ready() ? `已配置：${aiCfg.model}` : '尚未配置 API Key，生成总结时会自动退回规则版。';
 }
 
 // Section modal with businesses
@@ -3149,6 +3177,12 @@ function openSummaryModal() {
   document.querySelectorAll('#summary-modal .bucket-btn').forEach(b=>b.classList.toggle('active', b.dataset.summary==='month'));
   document.getElementById('summary-period').value = Utils.todayStr().slice(0,7);
   setSummaryType('month');
+  const aiToggle = document.getElementById('summary-use-ai');
+  if (aiToggle) aiToggle.checked = AI.ready();
+  const aiHint = document.getElementById('summary-ai-hint');
+  if (aiHint) aiHint.textContent = AI.ready()
+    ? '将用 DeepSeek 生成 5 行摘要，用时约 10–60 秒；失败会自动退回规则版，不影响导出。'
+    : '还没有配置 API Key，可在设置里填写后使用。';
   document.getElementById('summary-modal').classList.remove('hidden');
 }
 function closeSummaryModal() { document.getElementById('summary-modal').classList.add('hidden'); }
@@ -3162,7 +3196,128 @@ function setSummaryType(type) {
   else { label.textContent='选择年份'; input.type='number'; input.min=2000; input.max=2100; input.value=new Date().getFullYear(); }
 }
 
-function generateSummary() {
+// ============= AI 总结（DeepSeek，与 LifeLog 共用配置） =============
+const AI = {
+  KEY: 'ai.settings.v1',
+  DEFAULTS: { baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat', apiKey: '' },
+  get() {
+    try {
+      const raw = localStorage.getItem(this.KEY);
+      const val = raw ? JSON.parse(raw) : {};
+      return Object.assign({}, this.DEFAULTS, val || {});
+    } catch (err) {
+      return Object.assign({}, this.DEFAULTS);
+    }
+  },
+  save(patch) {
+    const next = Object.assign({}, this.get(), patch || {});
+    try {
+      localStorage.setItem(this.KEY, JSON.stringify(next));
+      return true;
+    } catch (err) {
+      return false;
+    }
+  },
+  ready() {
+    const s = this.get();
+    return Boolean(s.apiKey && s.baseUrl && s.model);
+  },
+  endpoint() {
+    return this.get().baseUrl.replace(/\/+$/, '') + '/chat/completions';
+  },
+  async chatStream(messages, opts) {
+    const cfg = this.get();
+    const options = opts || {};
+    if (!cfg.apiKey) throw new Error('还没有填写 DeepSeek API Key');
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), options.timeout || 120000);
+    let res;
+    try {
+      res = await fetch(this.endpoint(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.apiKey },
+        body: JSON.stringify({
+          model: cfg.model,
+          messages,
+          stream: true,
+          temperature: options.temperature === undefined ? 0.4 : options.temperature,
+          max_tokens: options.maxTokens || 900
+        }),
+        signal: ctrl.signal
+      });
+    } catch (err) {
+      clearTimeout(timer);
+      throw new Error(err.name === 'AbortError' ? '请求超时，请稍后重试' : '网络错误：' + err.message);
+    }
+    if (!res.ok) {
+      clearTimeout(timer);
+      let detail = '';
+      try { detail = await res.text(); } catch (err) { detail = ''; }
+      throw new Error('接口返回 ' + res.status + (detail ? '：' + detail.slice(0, 120) : ''));
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let text = '';
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      buffer += decoder.decode(chunk.value, { stream: true });
+      let idx = buffer.indexOf('\n');
+      while (idx >= 0) {
+        const line = buffer.slice(0, idx).trim();
+        buffer = buffer.slice(idx + 1);
+        idx = buffer.indexOf('\n');
+        if (!line.startsWith('data:')) continue;
+        const data = line.slice(5).trim();
+        if (!data || data === '[DONE]') continue;
+        try {
+          const json = JSON.parse(data);
+          const delta = json.choices && json.choices[0] && json.choices[0].delta;
+          if (delta && delta.content) text += delta.content;
+        } catch (err) { /* 忽略心跳等非 JSON 行 */ }
+      }
+    }
+    clearTimeout(timer);
+    if (!text.trim()) throw new Error('模型没有返回内容，可稍后重试');
+    return text.trim();
+  },
+  async ping() {
+    const text = await this.chatStream(
+      [{ role: 'user', content: '只回复两个字：可用' }],
+      { maxTokens: 20, timeout: 40000 }
+    );
+    return text.slice(0, 20);
+  }
+};
+
+// 把周期数据压成一段紧凑文本，控制 token 消耗
+function buildAIInput(ctx) {
+  const lines = [];
+  lines.push(`周期：${ctx.title}（${ctx.startStr} 至 ${ctx.endStr}）`);
+  lines.push(`总耗时 ${ctx.totalHours} 小时，完成 ${ctx.totalTasks} 项，计划中 ${ctx.planLogs.length} 项，有效工作 ${ctx.activeDays} 天。`);
+  ctx.secRows.slice(0, 6).forEach((sec) => {
+    const biz = sec.businesses.slice(0, 4).map((b) => `${b.name} ${Utils.durationToHours(b.units)}h`).join('、');
+    const tasks = (sec.tasks || []).slice(0, 8).map((t) => String(t).slice(0, 40)).join('；');
+    lines.push(`- ${sec.name} ${Utils.durationToHours(sec.units)}h：${biz}。工作：${tasks}`);
+  });
+  if (ctx.busiestDay) lines.push(`最忙的一天：${Utils.formatDate(ctx.busiestDay)}，${Utils.durationToHours(ctx.busiestVal)} 小时。`);
+  if (ctx.planLogs.length) lines.push(`计划待开展：${ctx.planLogs.slice(0, 8).map((l) => `[${Utils.getSectionName(l.sectionId)}] ${l.task}`).join('；')}`);
+  if (ctx.pendingTodos.length) lines.push(`未完成待办：${ctx.pendingTodos.slice(0, 8).map((t) => t.text).join('；')}`);
+  return lines.join('\n').slice(0, 2600);
+}
+
+async function aiNarrative(input) {
+  return AI.chatStream([
+    { role: 'system', content: '你是务实的职场复盘助手。只依据用户提供的数据写中文总结，不编造事实，不堆砌形容词，不输出思考过程。' },
+    {
+      role: 'user',
+      content: `以下是本周期的工作数据：\n${input}\n\n请输出 5 行以内：第 1 行一句话结论；接着 3 行要点，每行以「· 」开头并带具体数字；最后 1 行下一步建议，以「→ 」开头。不要标题，不要 Markdown 加粗。`
+    }
+  ], { maxTokens: 900, timeout: 120000 });
+}
+
+async function generateSummary() {
   const type = State.summaryType;
   const period = document.getElementById('summary-period').value;
   let start, end, title;
@@ -3223,7 +3378,7 @@ function generateSummary() {
   const secRows = sections.map(s=>{
     const a = agg[s.id];
     if (!a) return null;
-    return { id:s.id, name:s.name, color:s.color, units:a.units, businesses:Object.entries(a.businesses).map(([bid,b])=>({ name:Utils.getBusinessName(s.id,bid), units:b.units, tasks:b.tasks })).sort((x,y)=>y.units-x.units) };
+    return { id:s.id, name:s.name, color:s.color, units:a.units, tasks:a.tasks.slice(0,40), businesses:Object.entries(a.businesses).map(([bid,b])=>({ name:Utils.getBusinessName(s.id,bid), units:b.units, tasks:b.tasks })).sort((x,y)=>y.units-x.units) };
   }).filter(Boolean).sort((x,y)=>y.units-x.units);
 
   // busiest day
@@ -3241,6 +3396,29 @@ function generateSummary() {
 
   const pendingTodos = [];
   Store.getLogs().forEach(l=>{ (l.todos||[]).forEach(t=>{ if(!t.done) pendingTodos.push({text:t.text, section:Utils.getSectionName(l.sectionId), business:Utils.getBusinessName(l.sectionId,l.businessId)}); }); });
+
+  // ---- AI 执行摘要（失败不影响导出） ----
+  const aiBox = document.getElementById('summary-use-ai');
+  const useAI = !!(aiBox && aiBox.checked);
+  let aiText = '', aiError = '';
+  if (useAI) {
+    const btn = document.querySelector('#summary-modal .btn-primary');
+    if (!AI.ready()) {
+      aiError = '还没有配置 DeepSeek API Key，可在设置里填写。';
+    } else {
+      const oldLabel = btn ? btn.textContent : '';
+      if (btn) { btn.disabled = true; btn.textContent = 'AI 正在生成…'; }
+      try {
+        aiText = await aiNarrative(buildAIInput({
+          title, startStr, endStr, totalHours, totalTasks, planLogs, pendingTodos,
+          secRows, activeDays, busiestDay, busiestVal
+        }));
+      } catch (err) {
+        aiError = err.message || '生成失败';
+      }
+      if (btn) { btn.disabled = false; btn.textContent = oldLabel; }
+    }
+  }
 
   // ---- build self-contained HTML report (with SVG doughnut) ----
   let paths='', accStart=0;
@@ -3272,6 +3450,10 @@ function generateSummary() {
   ).join('') : '<li style="color:#8a8a8e">无</li>';
 
   const todoHTML = pendingTodos.length ? pendingTodos.map(t=>`<li>[${esc(t.section)}/${esc(t.business)}] ${esc(t.text)}</li>`).join('') : '<li style="color:#8a8a8e">无未完成待办</li>';
+
+  const aiCard = aiText
+    ? `<div class="card"><h2>🤖 执行摘要</h2><div class="insight">${aiText.split(/\n+/).filter(l=>l.trim()).map(l=>`<p style="margin:7px 0">${esc(l.trim())}</p>`).join('')}</div></div>`
+    : (aiError ? `<div class="card"><h2>🤖 执行摘要</h2><p style="color:#a9473b;font-size:13px">AI 摘要未生成：${esc(aiError)}。下面保留规则版数据要点。</p></div>` : '');
 
   const reportHTML = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -3310,6 +3492,7 @@ function generateSummary() {
   <h2>🤖 智能总结</h2>
   <div class="insight"><ul>${insights.map(i=>`<li>${i}</li>`).join('')}</ul></div>
 </div>
+${aiCard}
 <div class="card">
   <h2>📈 各板块 / 业务开展情况</h2>
   ${sectionsHTML || '<p style="color:#8a8a8e">本周期暂无记录</p>'}
@@ -3479,6 +3662,44 @@ function bindEvents() {
   document.getElementById('export-csv-btn').addEventListener('click',exportCSV);
   document.getElementById('export-json-btn').addEventListener('click',exportJSON);
   document.getElementById('summary-btn').addEventListener('click',openSummaryModal);
+
+  // AI 设置
+  const aiSaveBtn = document.getElementById('ai-save-btn');
+  if (aiSaveBtn) aiSaveBtn.addEventListener('click', () => {
+    const key = (document.getElementById('ai-key').value || '').trim();
+    const model = (document.getElementById('ai-model').value || '').trim() || AI.DEFAULTS.model;
+    if (!AI.save({ apiKey: key, model })) { toast('保存失败，存储空间可能不足'); return; }
+    toast('AI 设置已保存');
+    renderSettings();
+  });
+  const aiClearBtn = document.getElementById('ai-clear-btn');
+  if (aiClearBtn) aiClearBtn.addEventListener('click', () => {
+    if (!confirm('清除本机的 DeepSeek API Key？不影响其他数据。')) return;
+    AI.save({ apiKey: '' });
+    toast('已清除 API Key');
+    renderSettings();
+  });
+  const aiTestBtn = document.getElementById('ai-test-btn');
+  if (aiTestBtn) aiTestBtn.addEventListener('click', async () => {
+    const status = document.getElementById('ai-status');
+    const label = aiTestBtn.textContent;
+    const key = (document.getElementById('ai-key').value || '').trim();
+    const model = (document.getElementById('ai-model').value || '').trim() || AI.DEFAULTS.model;
+    if (key) AI.save({ apiKey: key, model });
+    aiTestBtn.disabled = true;
+    aiTestBtn.textContent = '测试中…';
+    if (status) status.textContent = '正在连接…';
+    try {
+      const reply = await AI.ping();
+      if (status) status.textContent = '连接正常，模型回复：' + reply;
+      toast('连接正常');
+    } catch (err) {
+      if (status) status.textContent = '连接失败：' + err.message;
+      toast('连接失败');
+    }
+    aiTestBtn.disabled = false;
+    aiTestBtn.textContent = label;
+  });
   document.getElementById('import-json-btn').addEventListener('click',()=>document.getElementById('import-file').click());
   document.getElementById('import-file').addEventListener('change',e=>{ if(e.target.files[0]) importJSON(e.target.files[0]); e.target.value=''; });
   document.getElementById('clear-data-btn').addEventListener('click',()=>{
