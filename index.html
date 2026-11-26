@@ -3259,10 +3259,14 @@ const AI = {
     const decoder = new TextDecoder();
     let buffer = '';
     let text = '';
+    let finish = '';
+    let rawAll = '';
     while (true) {
       const chunk = await reader.read();
       if (chunk.done) break;
-      buffer += decoder.decode(chunk.value, { stream: true });
+      const decoded = decoder.decode(chunk.value, { stream: true });
+      rawAll += decoded;
+      buffer += decoded;
       let idx = buffer.indexOf('\n');
       while (idx >= 0) {
         const line = buffer.slice(0, idx).trim();
@@ -3273,20 +3277,36 @@ const AI = {
         if (!data || data === '[DONE]') continue;
         try {
           const json = JSON.parse(data);
-          const delta = json.choices && json.choices[0] && json.choices[0].delta;
+          const choice = json.choices && json.choices[0];
+          if (choice && choice.finish_reason) finish = choice.finish_reason;
+          const delta = choice && choice.delta;
           if (delta && delta.content) text += delta.content;
         } catch (err) { /* 忽略心跳等非 JSON 行 */ }
       }
     }
     clearTimeout(timer);
-    if (!text.trim()) throw new Error('模型没有返回内容，可稍后重试');
+    if (!text.trim() && rawAll.trim()) {
+      // 有些中转服务忽略 stream，直接返回整体 JSON
+      try {
+        const whole = JSON.parse(rawAll);
+        const choice = whole.choices && whole.choices[0];
+        if (choice) {
+          if (choice.finish_reason) finish = choice.finish_reason;
+          if (choice.message && typeof choice.message.content === 'string') text = choice.message.content;
+        }
+      } catch (err) { /* 不是整体 JSON，保持原样 */ }
+    }
+    if (!text.trim()) {
+      if (finish === 'length') throw new Error('模型把输出额度用在了思考上，未返回正文。可在设置里换用对话型模型，或稍后重试');
+      throw new Error('模型没有返回正文' + (finish ? `（finish: ${finish}）` : '') + '，可稍后重试');
+    }
     return text.trim();
   },
   async ping() {
-    const text = await this.chatStream(
-      [{ role: 'user', content: '只回复两个字：可用' }],
-      { maxTokens: 20, timeout: 40000 }
-    );
+    const text = await this.chatStream([
+      { role: 'system', content: '这是连通性测试。直接给出结果，不要推理过程。' },
+      { role: 'user', content: '只回复两个字：可用' }
+    ], { maxTokens: 512, timeout: 60000 });
     return text.slice(0, 20);
   }
 };
@@ -3321,16 +3341,27 @@ function buildAIInput(ctx) {
 }
 
 async function aiNarrative(input) {
-  return AI.chatStream([
-    {
-      role: 'system',
-      content: '你是资深效率顾问，擅长把零散工时记录写成有判断力的复盘。只使用给定数据，不编造事实；每个判断都要带数字；语言克制、具体，不写空话，不输出思考过程。'
-    },
-    {
-      role: 'user',
-      content: `以下是本周期的工作数据：\n${input}\n\n请严格按下面的格式输出，总字数 350–500 字，每段都必须引用数据中的数字：\n【结论】2 句话：本期最大的特点，以及最值得注意的问题。\n【时间结构】2–3 句：投入分布、集中度、与上期相比的变化。\n【进展】2–3 句：真正推进了哪些事，点名板块或业务。\n【风险】2 条，每条以「· 」开头：过载、积压或结构性浪费，带数字。\n【下期建议】3 条，每条以「· 」开头，格式为「动作 + 量化目标 + 预计投入」。\n【周报版】120–180 字书面语，可直接粘贴给领导，不用口语和第一人称。`
+  const system = { role: 'system', content: '你是资深效率顾问，擅长把零散工时记录写成有判断力的复盘。只使用给定数据，不编造事实；每个判断都要带数字；语言克制、具体，不写空话，不输出思考过程。' };
+  const userText = `以下是本周期的工作数据：\n${input}\n\n请严格按下面的格式输出，总字数 350–500 字，每段都必须引用数据中的数字：\n【结论】2 句话：本期最大的特点，以及最值得注意的问题。\n【时间结构】2–3 句：投入分布、集中度、与上期相比的变化。\n【进展】2–3 句：真正推进了哪些事，点名板块或业务。\n【风险】2 条，每条以「· 」开头：过载、积压或结构性浪费，带数字。\n【下期建议】3 条，每条以「· 」开头，格式为「动作 + 量化目标 + 预计投入」。\n【周报版】120–180 字书面语，可直接粘贴给领导，不用口语和第一人称。`;
+  // 思考型模型可能把额度用在思考上：先用常规额度，空返回时加大额度并明确要求直接作答
+  const plans = [
+    { maxTokens: 2600, extra: '' },
+    { maxTokens: 5000, extra: '\n\n注意：不要输出分析过程或思考内容，直接给出最终结果。' }
+  ];
+  let lastError = null;
+  for (let i = 0; i < plans.length; i += 1) {
+    try {
+      return await AI.chatStream([
+        system,
+        { role: 'user', content: userText + plans[i].extra }
+      ], { maxTokens: plans[i].maxTokens, timeout: 180000 });
+    } catch (err) {
+      lastError = err;
+      const msg = String((err && err.message) || '');
+      if (!/额度|没有返回|空|截断|length/i.test(msg)) throw err;
     }
-  ], { maxTokens: 2200, timeout: 150000 });
+  }
+  throw lastError || new Error('生成失败，请稍后重试');
 }
 
 // 把模型输出按【小节】渲染成报告区块
