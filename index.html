@@ -3291,30 +3291,84 @@ const AI = {
   }
 };
 
-// 把周期数据压成一段紧凑文本，控制 token 消耗
+// 把周期数据压成一段紧凑文本：保留判断所需的结构信息，控制 token
 function buildAIInput(ctx) {
   const lines = [];
-  lines.push(`周期：${ctx.title}（${ctx.startStr} 至 ${ctx.endStr}）`);
-  lines.push(`总耗时 ${ctx.totalHours} 小时，完成 ${ctx.totalTasks} 项，计划中 ${ctx.planLogs.length} 项，有效工作 ${ctx.activeDays} 天。`);
-  ctx.secRows.slice(0, 6).forEach((sec) => {
+  lines.push(`【周期】${ctx.title}（${ctx.startStr} 至 ${ctx.endStr}），共 ${ctx.spanDays} 天`);
+  lines.push(`【总量】${ctx.totalHours} 小时 / ${ctx.totalTasks} 项；有效工作 ${ctx.activeDays} 天，日均 ${ctx.avgHours} 小时；单日峰值 ${ctx.busiestHour} 小时（${ctx.busiestDay ? Utils.formatDate(ctx.busiestDay) : '—'}）`);
+  lines.push(`【环比】上期 ${ctx.prevHours} 小时 / ${ctx.prevTasks} 项，本期${ctx.deltaText}`);
+  lines.push(`【节奏】工作日 ${ctx.workdayHours} 小时，周末 ${ctx.weekendHours} 小时；最长连续工作 ${ctx.maxStreak} 天；无记录 ${ctx.zeroDays} 天`);
+
+  const secText = ctx.secRows.slice(0, 6).map((sec) => {
+    const share = ctx.totalUnits ? Math.round(sec.units / ctx.totalUnits * 100) : 0;
+    const delta = sec.prevUnits ? Math.round((sec.units - sec.prevUnits) / sec.prevUnits * 100) : null;
+    const deltaText = delta === null ? '' : `，环比${delta >= 0 ? '+' : ''}${delta}%`;
     const biz = sec.businesses.slice(0, 4).map((b) => `${b.name} ${Utils.durationToHours(b.units)}h`).join('、');
-    const tasks = (sec.tasks || []).slice(0, 8).map((t) => String(t).slice(0, 40)).join('；');
-    lines.push(`- ${sec.name} ${Utils.durationToHours(sec.units)}h：${biz}。工作：${tasks}`);
-  });
-  if (ctx.busiestDay) lines.push(`最忙的一天：${Utils.formatDate(ctx.busiestDay)}，${Utils.durationToHours(ctx.busiestVal)} 小时。`);
-  if (ctx.planLogs.length) lines.push(`计划待开展：${ctx.planLogs.slice(0, 8).map((l) => `[${Utils.getSectionName(l.sectionId)}] ${l.task}`).join('；')}`);
-  if (ctx.pendingTodos.length) lines.push(`未完成待办：${ctx.pendingTodos.slice(0, 8).map((t) => t.text).join('；')}`);
+    return `- ${sec.name} ${Utils.durationToHours(sec.units)}h（占 ${share}%${deltaText}）：${biz}`;
+  }).join('\n');
+  if (secText) lines.push('【板块】\n' + secText);
+
+  const taskText = ctx.secRows.slice(0, 4).map((sec) => {
+    const list = (sec.tasks || []).slice(0, 6).map((t) => String(t).slice(0, 34));
+    return `- ${sec.name}：${list.join('；')}`;
+  }).join('\n');
+  if (taskText) lines.push('【代表任务】\n' + taskText);
+
+  lines.push(`【计划】计划中 ${ctx.planLogs.length} 项未完成；未勾选待办 ${ctx.pendingTodos.length} 项`);
+  if (ctx.planLogs.length) lines.push(`【待开展】${ctx.planLogs.slice(0, 6).map((l) => `[${Utils.getSectionName(l.sectionId)}] ${String(l.task).slice(0, 30)}`).join('；')}`);
+  if (ctx.pendingTodos.length) lines.push(`【未完成待办】${ctx.pendingTodos.slice(0, 6).map((t) => String(t.text).slice(0, 30)).join('；')}`);
   return lines.join('\n').slice(0, 2600);
 }
 
 async function aiNarrative(input) {
   return AI.chatStream([
-    { role: 'system', content: '你是务实的职场复盘助手。只依据用户提供的数据写中文总结，不编造事实，不堆砌形容词，不输出思考过程。' },
+    {
+      role: 'system',
+      content: '你是资深效率顾问，擅长把零散工时记录写成有判断力的复盘。只使用给定数据，不编造事实；每个判断都要带数字；语言克制、具体，不写空话，不输出思考过程。'
+    },
     {
       role: 'user',
-      content: `以下是本周期的工作数据：\n${input}\n\n请输出 5 行以内：第 1 行一句话结论；接着 3 行要点，每行以「· 」开头并带具体数字；最后 1 行下一步建议，以「→ 」开头。不要标题，不要 Markdown 加粗。`
+      content: `以下是本周期的工作数据：\n${input}\n\n请严格按下面的格式输出，总字数 350–500 字，每段都必须引用数据中的数字：\n【结论】2 句话：本期最大的特点，以及最值得注意的问题。\n【时间结构】2–3 句：投入分布、集中度、与上期相比的变化。\n【进展】2–3 句：真正推进了哪些事，点名板块或业务。\n【风险】2 条，每条以「· 」开头：过载、积压或结构性浪费，带数字。\n【下期建议】3 条，每条以「· 」开头，格式为「动作 + 量化目标 + 预计投入」。\n【周报版】120–180 字书面语，可直接粘贴给领导，不用口语和第一人称。`
     }
-  ], { maxTokens: 900, timeout: 120000 });
+  ], { maxTokens: 2200, timeout: 150000 });
+}
+
+// 把模型输出按【小节】渲染成报告区块
+function renderAIBlocks(text) {
+  const chunks = [];
+  let cur = null;
+  const flush = () => {
+    if (!cur) return;
+    const items = cur.lines.filter(Boolean);
+    if (!items.length) { cur = null; return; }
+    if (cur.title.indexOf('周报') >= 0) {
+      chunks.push(`<div style="margin:14px 0;padding:10px 12px;background:#f7f5f0;border-left:3px solid #8a6d3b;border-radius:6px;font-size:13px;line-height:1.9;color:#333">${items.map((l) => `<p style="margin:4px 0">${esc(l)}</p>`).join('')}</div>`);
+      cur = null;
+      return;
+    }
+    const bullets = items.filter((l) => /^[·\-*]\s+/.test(l));
+    const paras = items.filter((l) => !/^[·\-*]\s+/.test(l));
+    let html = '';
+    if (cur.title) html += `<div style="font-weight:700;font-size:13.5px;color:#1a1a1a;margin:14px 0 4px">${esc(cur.title)}</div>`;
+    html += paras.map((l) => `<p style="margin:5px 0">${esc(l)}</p>`).join('');
+    if (bullets.length) html += `<ul style="margin:4px 0 0;padding-left:18px;line-height:1.75">${bullets.map((l) => `<li style="margin:3px 0">${esc(l.replace(/^[·\-*]\s+/, ''))}</li>`).join('')}</ul>`;
+    chunks.push(html);
+    cur = null;
+  };
+  text.split(/\n/).forEach((raw) => {
+    const line = raw.trim();
+    if (!line) return;
+    const m = line.match(/^【(.+?)】\s*(.*)$/);
+    if (m) {
+      flush();
+      cur = { title: m[1], lines: m[2] ? [m[2]] : [] };
+      return;
+    }
+    if (!cur) cur = { title: '', lines: [] };
+    cur.lines.push(line);
+  });
+  flush();
+  return chunks.join('');
 }
 
 async function generateSummary() {
@@ -3387,6 +3441,37 @@ async function generateSummary() {
   Object.entries(dayMap).forEach(([d,u])=>{ if(u>busiestVal){ busiestVal=u; busiestDay=d; } });
   const activeDays = Object.keys(dayMap).length;
 
+  // ---- 环比与节奏（供 AI 判断用） ----
+  const spanDays = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+  const prevEndStr = Utils.formatDateFull(new Date(start.getTime() - 86400000));
+  const prevStartStr = Utils.formatDateFull(new Date(start.getTime() - spanDays * 86400000));
+  const prevLogs = Store.getLogs().filter(l => l.date && l.date >= prevStartStr && l.date <= prevEndStr && l.status === 'done');
+  const prevUnits = prevLogs.reduce((sum, l) => sum + l.duration, 0);
+  const prevUnitsBySection = {};
+  prevLogs.forEach(l => { prevUnitsBySection[l.sectionId] = (prevUnitsBySection[l.sectionId] || 0) + l.duration; });
+  secRows.forEach(s => { s.prevUnits = prevUnitsBySection[s.id] || 0; });
+  let weekendUnits = 0;
+  doneLogs.forEach(l => {
+    const wd = new Date(String(l.date).replace(/-/g, '/')).getDay();
+    if (wd === 0 || wd === 6) weekendUnits += l.duration;
+  });
+  const sortedDays = Object.keys(dayMap).sort();
+  let maxStreak = 0, runStreak = 0, prevDay = null;
+  sortedDays.forEach(d => {
+    if (prevDay) {
+      const gap = Math.round((new Date(d.replace(/-/g, '/')) - new Date(prevDay.replace(/-/g, '/'))) / 86400000);
+      runStreak = gap === 1 ? runStreak + 1 : 1;
+    } else {
+      runStreak = 1;
+    }
+    maxStreak = Math.max(maxStreak, runStreak);
+    prevDay = d;
+  });
+  const prevHours = Utils.durationToHours(prevUnits);
+  const deltaText = prevUnits
+    ? `${totalUnits >= prevUnits ? '增长' : '减少'} ${Math.abs(Math.round((totalUnits - prevUnits) / prevUnits * 100))}%`
+    : '（上期无记录）';
+
   const insights = [];
   if (secRows.length) insights.push(`本周期投入最多的是「${secRows[0].name}」，共 ${Utils.durationToHours(secRows[0].units)} 小时，占总耗时 ${totalUnits?Math.round(secRows[0].units/totalUnits*100):0}%。`);
   if (secRows[0] && secRows[0].businesses.length) insights.push(`其中「${secRows[0].businesses[0].name}」是耗时最多的业务（${Utils.durationToHours(secRows[0].businesses[0].units)} 小时）。`);
@@ -3411,7 +3496,13 @@ async function generateSummary() {
       try {
         aiText = await aiNarrative(buildAIInput({
           title, startStr, endStr, totalHours, totalTasks, planLogs, pendingTodos,
-          secRows, activeDays, busiestDay, busiestVal
+          secRows, activeDays, busiestDay, busiestVal, spanDays, totalUnits,
+          avgHours: activeDays ? Utils.durationToHours(Math.round(totalUnits / activeDays)) : '0',
+          busiestHour: Utils.durationToHours(busiestVal),
+          prevHours, prevTasks: prevLogs.length, deltaText,
+          workdayHours: Utils.durationToHours(totalUnits - weekendUnits),
+          weekendHours: Utils.durationToHours(weekendUnits),
+          maxStreak, zeroDays: Math.max(spanDays - activeDays, 0)
         }));
       } catch (err) {
         aiError = err.message || '生成失败';
@@ -3452,8 +3543,8 @@ async function generateSummary() {
   const todoHTML = pendingTodos.length ? pendingTodos.map(t=>`<li>[${esc(t.section)}/${esc(t.business)}] ${esc(t.text)}</li>`).join('') : '<li style="color:#8a8a8e">无未完成待办</li>';
 
   const aiCard = aiText
-    ? `<div class="card"><h2>🤖 执行摘要</h2><div class="insight">${aiText.split(/\n+/).filter(l=>l.trim()).map(l=>`<p style="margin:7px 0">${esc(l.trim())}</p>`).join('')}</div></div>`
-    : (aiError ? `<div class="card"><h2>🤖 执行摘要</h2><p style="color:#a9473b;font-size:13px">AI 摘要未生成：${esc(aiError)}。下面保留规则版数据要点。</p></div>` : '');
+    ? `<div class="card"><h2>🧭 AI 复盘</h2><div class="insight">${renderAIBlocks(aiText)}</div></div>`
+    : (aiError ? `<div class="card"><h2>🧭 AI 复盘</h2><p style="color:#a9473b;font-size:13px">AI 复盘未生成：${esc(aiError)}。下面保留规则版数据要点。</p></div>` : '');
 
   const reportHTML = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -3489,7 +3580,7 @@ async function generateSummary() {
   </svg>
 </div>
 <div class="card">
-  <h2>🤖 智能总结</h2>
+  <h2>📊 数据要点</h2>
   <div class="insight"><ul>${insights.map(i=>`<li>${i}</li>`).join('')}</ul></div>
 </div>
 ${aiCard}
